@@ -13,6 +13,7 @@
 local game = "NTSC SMB" --Valid inputs: "NTSC SMB", "PAL SMB", "SMB2J", and "ANNSMB"
 
 --toggle features, change to false if you don't want them
+local toggle_display_above_status_bar_information   = true
 local toggle_display_sprite_hitboxes                = true
 local toggle_display_mario_hitbox                   = true
 local toggle_display_sprite_slot_above_sprite       = true
@@ -494,8 +495,6 @@ function display_information()
 end
 
 while true do
-	display_pellsson()
-	
 	if toggle_display_sprite_hitboxes then
 		display_sprite_hitboxes()
 	end
@@ -511,6 +510,10 @@ while true do
 	if toggle_display_sprite_information then
 		display_spriteslots()
 	end
-	display_information()
+	
+	if toggle_display_above_status_bar_information then
+		display_pellsson()
+		display_information()
+	end
 	emu.frameadvance()
 end
