@@ -220,7 +220,7 @@ function display_pellsson() --Code to display Pellsson information
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 8 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 5 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 5 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - 8 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 8 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 8 >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
