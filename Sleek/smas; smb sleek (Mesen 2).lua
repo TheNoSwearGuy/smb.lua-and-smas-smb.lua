@@ -218,7 +218,7 @@ function display_pellsson() --Code to display Pellsson information
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.snesMemory) == 2 and emu.read(wram_LevelNumber, emu.memType.snesMemory) == 0) or (emu.read(wram_WorldNumber, emu.memType.snesMemory) == 4 and emu.read(wram_LevelNumber, emu.memType.snesMemory) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 8 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 5 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 5 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 8 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 8 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.snesMemory) - 8 >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
