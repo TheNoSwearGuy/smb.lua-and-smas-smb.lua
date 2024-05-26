@@ -51,7 +51,6 @@ local ram_Player_Y_Speed        = 0x9F
 local ram_SprObject_Y_Position  = 0xCE
 local ram_Square2SoundQueue     = 0xFE
 local ram_FloateyNum_Timer      = 0x12C
-local ram_Player_Rel_XPos       = 0x3AD
 local ram_SprObject_X_MoveForce = 0x400
 local ram_SprObject_YMF_Dummy   = 0x416
 local ram_Player_Y_MoveForce    = 0x433
