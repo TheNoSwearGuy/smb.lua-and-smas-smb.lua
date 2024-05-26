@@ -189,77 +189,122 @@ function display_pellsson() --Code to display Pellsson information
 		OperMode_TaskDisplay = -1
 	end
 	
+	if memory.readbyte(wram_Player_Rel_XPos) > 0x70 then
+		xpos = memory.readbyte(wram_Player_Rel_XPos) - 0x70
+	else
+		xpos = 0
+	end
 	if (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0xE6 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0xE6 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0xE6 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 1) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0xE7 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0xE7 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0xE7 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 5 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 5 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 5 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 5 then
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 0 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0x10 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0x10 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0x10 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 0x10 then
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0x98 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0x98 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0x98 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 8 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 8 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 8 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 8 then
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 1 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0x96 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0x96 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0x96 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 2 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0xF7 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0xF7 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0xF7 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 0) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0xB6 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0xB6 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0xB6 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0xF6 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0xF6 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0xF6 >= 0x80 then
+		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 0 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 0x27 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 0x27 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 0x27 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 0x27 then
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif (memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 1) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - 7 >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - 7 <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - 7 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 7 then
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	end
 	gui.pixelText(0, 62, "Backwards ", text_colour, text_back_colour, "fceux")

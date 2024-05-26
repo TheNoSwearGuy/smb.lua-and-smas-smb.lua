@@ -192,77 +192,122 @@ function display_pellsson() --Code to display Pellsson information
 		OperMode_TaskDisplay = -1
 	end
 	
+	if emu.read(wram_Player_Rel_XPos, emu.memType.cpu) > 0x70 then
+		xpos = emu.read(wram_Player_Rel_XPos, emu.memType.cpu) - 0x70
+	else
+		xpos = 0
+	end
 	if (emu.read(wram_WorldNumber, emu.memType.cpu) == 0 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 7 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE6 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE6 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE6 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE6 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE6 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 0 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 1 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 3 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 6 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE7 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE7 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xE7 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE7 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE7 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xE7 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 0 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 4 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 5 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 5 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 5 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 5 then
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos + 0x100) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos + 0x100) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (5 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif emu.read(wram_WorldNumber, emu.memType.cpu) == 1 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0 then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x10 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x10 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x10 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 0x10 then
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos + 0x100) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos + 0x100) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x10 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 1 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 3 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 6 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x98 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x98 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x98 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x98 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x98 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x98 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 2 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 4 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 8 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 8 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 8 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 8 then
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos + 0x100) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos + 0x100) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (8 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif emu.read(wram_WorldNumber, emu.memType.cpu) == 2 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1 then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x96 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x96 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x96 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x96 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x96 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x96 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif emu.read(wram_WorldNumber, emu.memType.cpu) == 2 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2 then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF7 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF7 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF7 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF7 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF7 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF7 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 3 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 6 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xB6 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xB6 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xB6 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xB6 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xB6 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xB6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 4 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 5 and emu.read(wram_LevelNumber, emu.memType.cpu) == 2) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF6 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF6 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0xF6 >= 0x80 then
+		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF6 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF6 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0xF6 - xpos) >= 0x80 then
 			BackwardsPole = true
 		else
 			BackwardsPole = false
 		end
 	elseif emu.read(wram_WorldNumber, emu.memType.cpu) == 5 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0 then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x27 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x27 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 0x27 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 0x27 then
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos + 0x100) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos + 0x100) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (0x27 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	elseif (emu.read(wram_WorldNumber, emu.memType.cpu) == 5 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 7 and emu.read(wram_LevelNumber, emu.memType.cpu) == 0) or (emu.read(wram_WorldNumber, emu.memType.cpu) == 7 and emu.read(wram_LevelNumber, emu.memType.cpu) == 1) then
-		if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 7 >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 7 <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - 7 >= 0x80 then
-			BackwardsPole = true
+		if xpos > 7 then
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos + 0x100) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos + 0x100) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos + 0x100) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		else
-			BackwardsPole = false
+			if (emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos) >= -128 and emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos) <= -1) or emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu) - (7 - xpos) >= 0x80 then
+				BackwardsPole = true
+			else
+				BackwardsPole = false
+			end
 		end
 	end
 	emu.drawRectangle(0, 62, 50, 9, text_back_colour, text_back_colour)
