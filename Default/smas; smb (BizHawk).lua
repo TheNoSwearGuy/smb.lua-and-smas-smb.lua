@@ -147,7 +147,7 @@ function display_pellsson() --Code to display Pellsson information
 	end
 	
 	memory.usememorydomain("System Bus")
-	if memory.readbyte(ram_FrameCounter) % 2 == 0 then
+	if memory.readbyte(wram_FrameCounter) % 2 == 0 then
 		XOrgDisplay = memory.readbyte(XOrg)
 		YOrgDisplay = memory.readbyte(YOrg)
 	end
