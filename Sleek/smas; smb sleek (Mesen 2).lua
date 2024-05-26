@@ -145,7 +145,7 @@ function display_pellsson() --Code to display Pellsson information
 		drawString(35, 15, "F", 0xFFFFFF, 0xFF000000)
 	end
 	
-	if emu.read(ram_FrameCounter, emu.memType.snesMemory) % 2 == 0 then
+	if emu.read(wram_FrameCounter, emu.memType.snesMemory) % 2 == 0 then
 		XOrgDisplay = emu.read(XOrg, emu.memType.snesMemory)
 		YOrgDisplay = emu.read(YOrg, emu.memType.snesMemory)
 	end
