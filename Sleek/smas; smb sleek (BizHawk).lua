@@ -59,7 +59,7 @@ local wram_OperMode_Task         = 0x772
 local wram_IntervalTimerControl  = 0x787
 local wram_JumpSwimTimer         = 0x78A
 local wram_BoundingBox_UL_Corner = 0xF9C
-local wram_Square3SoundQueue     = 0x1603
+local wram_Sample7SoundQueue     = 0x1603
 
 --Pellsson variables:
 local sock                    = 0
@@ -113,7 +113,7 @@ function display_pellsson() --Code to display Pellsson information
 	
 	if (memory.readbyte(wram_OperMode) == 0 and memory.readbyte(wram_FrameCounter) % 2 == 0)
 	or memory.readbyte(wram_JumpSwimTimer) == 0x20
-	or memory.readbyte(wram_Square3SoundQueue) == 1
+	or memory.readbyte(wram_Sample7SoundQueue ) == 1
 	or memory.readbyte(wram_FloateyNum_Timer) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 1) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 2) == 0x2A
