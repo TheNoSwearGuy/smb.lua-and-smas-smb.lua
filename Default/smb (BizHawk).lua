@@ -4,12 +4,13 @@
 --• Start → Small → End
 --• Start → Small → Mushroom → End
 --• Start → Small → Mushroom → Fire → End
+--The framerule counter desyncs when you soft reset or hard reset at least 32,767 non-lag frames after loading the ROM file
 
 --Before running the script, you MUST set this variable to either the game you're playing or the game the ROMhack you're playing is based off of in order to have
---both accurate warp zone remainders and the framerule counter to be accurate. For example, if you're playing Super Bob, that game is based off of NTSC SMB, so
---you would set the 'game' variable to '"NTSC SMB"'. Pellsson ROM is automatically detected and is prioritized over all the other four games, so if you're using
---Pellsson, it doesn't matter what you have this variable set to. If you set the 'game' variable to a non-valid value, this will cause you to not have accurate
---warp zone remainders, and it will make the framerule counter default to you not playing on PAL SMB.
+--accurate warp zone remainders, the framerule counter to be accurate, and for the timer to use the right framerate. For example, if you're playing Super Bob, that
+--game is based off of NTSC SMB, so you would set this variable to '"NTSC SMB"'. Pellsson ROM is automatically detected and is prioritized over all the other four
+--games, so if you're using Pellsson, it doesn't matter what you have this variable set to. If you set this variable to a non-valid value, this will cause you to
+--not have accurate warp zone remainders, and it will make the framerule counter and the timer default to you not playing on PAL SMB.
 local game = "NTSC SMB" --Valid inputs: "NTSC SMB", "PAL SMB", "SMB2J", and "ANNSMB"
 
 --toggle features, change to false if you don't want them
@@ -19,6 +20,7 @@ local toggle_display_mario_hitbox                   = true
 local toggle_display_sprite_slot_above_sprite       = true
 local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
+local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true --Not a part of the smb3.lua script, but I thought it would be nice to have this
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
@@ -36,6 +38,11 @@ local hitbox_edge_colour_off  = "#00FF00" --Hitbox back and edge colour for when
 local hitbox_back_colour_off  = "clear"
 local sprite_slot_text_colour = "white"
 local sprite_slot_back_colour = "#66000000"
+
+--Timer settings:
+local negative_delay = true --'true' for negative delay, 'false' for the timer to say "00:00:00.000" until timing starts
+local start_frame    = 0 --0 for TAS timing
+local end_frame      = -1 --Set to -1 for no end frame
 
 --Pellsson settings:
 local XOrg = 0x3AD
@@ -106,8 +113,7 @@ function display_remainder(x, mod) --Function to display the remainder and to co
 end
 
 function display_pellsson() --Code to display Pellsson information
-	local Pellsson = false
-	if memory.readbyte(0xFDFD) == 0xEA and memory.readbyte(0xFDFE) == 0xEA		--Check if we're playing on any version of Pellsson
+	if memory.readbyte(0xFDFD) == 0xEA and memory.readbyte(0xFDFE) == 0xEA --Check if we're playing on any version of Pellsson
 	and memory.readbyte(0xFDFF) == 0xEA and memory.readbyte(0xFE00) == 0xA9
 	and memory.readbyte(0xFE02) == 0x20 and memory.readbyte(0xFE04) == 0xFF
 	and memory.readbyte(0xFE05) == 0x4C then
@@ -117,21 +123,29 @@ function display_pellsson() --Code to display Pellsson information
 		and memory.readbyte(0xFE06) == 0x69 and memory.readbyte(0xFE07) == 0xB7)
 		or (memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x3D
 		and memory.readbyte(0xFE06) == 0x7A and memory.readbyte(0xFE07) == 0xB9) then
-			Pellsson = "5.5 FDS/5.6/6.0 Beta"
+			Pellsson_Pellsson = "5.5 FDS/5.6/6.0 Beta"
 		elseif memory.readbyte(0xFE01) == 0xC and memory.readbyte(0xFE03) == 0x4A
 		and memory.readbyte(0xFE06) == 0xF5 and memory.readbyte(0xFE07) == 0xBB then
-			Pellsson = "6.0 MMC5"
+			Pellsson_Pellsson = "6.0 MMC5"
 		elseif memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x16
 		and memory.readbyte(0xFE06) == 0x9B and memory.readbyte(0xFE07) == 0xB7 then
-			Pellsson = "PAL"
+			Pellsson_Pellsson = "PAL"
+		elseif memory.readbyte(0xFE01) == 0xEA and memory.readbyte(0xFE03) == 0xEA
+		and memory.readbyte(0xFE06) == 0xEA and memory.readbyte(0xFE07) == 0xEA then
+			Pellsson_Pellsson = Pellsson
 		else
-			Pellsson = false
+			Pellsson_Pellsson = false
 		end
+	elseif memory.readbyte(0xFDFD) == 0xEA and memory.readbyte(0xFDFE) == 0xEA
+	and memory.readbyte(0xFDFF) == 0xEA and memory.readbyte(0xFE00) == 0xEA
+	and memory.readbyte(0xFE02) == 0xEA and memory.readbyte(0xFE04) == 0xEA
+	and memory.readbyte(0xFE05) == 0xEA then
+		Pellsson_Pellsson = Pellsson
 	else
-		Pellsson = false
+		Pellsson_Pellsson = false
 	end
 	
-	if Pellsson == false then
+	if Pellsson_Pellsson == false then
 		if memory.readbyte(0xE141) == 0x38 and memory.readbyte(0xE142) == 0x44
 		and memory.readbyte(0xE143) == 0xBA and memory.readbyte(0xE144) == 0xAA
 		and memory.readbyte(0xE145) == 0xB2 and memory.readbyte(0xE146) == 0xAA
@@ -142,21 +156,30 @@ function display_pellsson() --Code to display Pellsson information
 		end
 		
 		local RNG = memory.readbyte(ram_PseudoRandomBitReg) * 256 + memory.readbyte(ram_PseudoRandomBitReg + 1)
+		local framecount_minus_lagcount = RNGmap[RNG]
+		while framecount_minus_lagcount < (emu.framecount() - emu.lagcount()) do
+			if framecount_minus_lagcount < (emu.framecount() - emu.lagcount()) then
+				framecount_minus_lagcount = framecount_minus_lagcount + 32767
+			end
+		end
+		if framecount_minus_lagcount > (emu.framecount() - emu.lagcount()) then
+			framecount_minus_lagcount = framecount_minus_lagcount - 32767
+		end
 		if game == "PAL SMB" then
 			if memory.readbyte(ram_PlayerStatus) == 0 then
-				framerule = math.floor((RNGmap[RNG] - 1) / 18 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - 1) / 18 + 1) % 10000
 			elseif memory.readbyte(ram_PlayerStatus) == 1 then
-				framerule = math.floor((RNGmap[RNG] - 60) / 18 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - 60) / 18 + 1) % 10000
 			else
-				framerule = math.floor((RNGmap[RNG] - 123) / 18 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - 123) / 18 + 1) % 10000
 			end
 		else
 			if memory.readbyte(ram_PlayerStatus) == 0 then
-				framerule = math.floor((RNGmap[RNG] - x) / 21 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - x) / 21 + 1) % 10000
 			elseif memory.readbyte(ram_PlayerStatus) == 1 then
-				framerule = math.floor((RNGmap[RNG] - x - 59) / 21 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - x - 59) / 21 + 1) % 10000
 			else
-				framerule = math.floor((RNGmap[RNG] - x - 122) / 21 + 1) % 10000
+				framerule = math.floor((framecount_minus_lagcount - x - 122) / 21 + 1) % 10000
 			end
 		end
 	else
@@ -245,13 +268,13 @@ function display_pellsson() --Code to display Pellsson information
 		display_remainder(0, 21)
 	elseif memory.readbyte(ram_GameEngineSubroutine) == 3 then
 		if memory.readbyte(ram_WarpZoneControl) ~= 0 then
-			if Pellsson == "5.5 FDS/5.6/6.0 Beta" then --If playing on Pellsson 5.5 FDS, 5.6, or 6.0 Beta
+			if Pellsson_Pellsson == "5.5 FDS/5.6/6.0 Beta" then --If playing on Pellsson 5.5 FDS, 5.6, or 6.0 Beta
 				if memory.readbyte(ram_BANK_SELECTED) == 4 then --If playing SMB on Pellsson 5.5 FDS, 5.6, or 6.0 Beta
 					display_remainder(8, 21)
 				elseif memory.readbyte(ram_BANK_SELECTED) == 12 then --If playing SMB2J on Pellsson 5.5 FDS, 5.6, or 6.0 Beta
 					display_remainder(6, 21)
 				end
-			elseif Pellsson == "6.0 MMC5" then --If playing Pellsson 6.0 MMC5
+			elseif Pellsson_Pellsson == "6.0 MMC5" then --If playing Pellsson 6.0 MMC5
 				if memory.readbyte(ram_BANK_SELECTED) == 8 then --If playing SMB on Pellsson 6.0 MMC5
 					display_remainder(8, 21)
 				elseif memory.readbyte(ram_BANK_SELECTED) == 24 then --If playing SMB2J on Pellsson 6.0 MMC5
@@ -259,9 +282,9 @@ function display_pellsson() --Code to display Pellsson information
 				elseif memory.readbyte(ram_BANK_SELECTED) == 32 then --If playing ANNSMB on Pellsson 6.0 MMC5
 					display_remainder(5, 21)
 				end
-			elseif Pellsson == "PAL" then --If playing Pallsson
+			elseif Pellsson_Pellsson == "PAL" then --If playing Pallsson
 				display_remainder(7, 18)
-			elseif Pellsson == false then --If not playing on any version of Pellsson
+			elseif Pellsson_Pellsson == false then --If not playing on any version of Pellsson
 				if game == "NTSC SMB" then -- If playing on NTSC SMB
 					display_remainder(8, 21)
 				elseif game == "PAL SMB" then --If playing on PAL SMB
@@ -382,6 +405,96 @@ function display_spriteslots()
 	end
 end
 
+function display_time()
+	if memory.readbyte(0xFDFD) == 0xEA and memory.readbyte(0xFDFE) == 0xEA --Check if we're playing on any version of Pellsson
+	and memory.readbyte(0xFDFF) == 0xEA and memory.readbyte(0xFE00) == 0xA9
+	and memory.readbyte(0xFE02) == 0x20 and memory.readbyte(0xFE04) == 0xFF
+	and memory.readbyte(0xFE05) == 0x4C then
+		if (memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x16
+		and memory.readbyte(0xFE06) == 0x6B and memory.readbyte(0xFE07) == 0xB7)
+		or (memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x16
+		and memory.readbyte(0xFE06) == 0x69 and memory.readbyte(0xFE07) == 0xB7)
+		or (memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x3D
+		and memory.readbyte(0xFE06) == 0x7A and memory.readbyte(0xFE07) == 0xB9)
+		or memory.readbyte(0xFE01) == 0xC and memory.readbyte(0xFE03) == 0x4A
+		and memory.readbyte(0xFE06) == 0xF5 and memory.readbyte(0xFE07) == 0xBB then
+			Pellsson_time = "NTSC"
+		elseif memory.readbyte(0xFE01) == 6 and memory.readbyte(0xFE03) == 0x16
+		and memory.readbyte(0xFE06) == 0x9B and memory.readbyte(0xFE07) == 0xB7 then
+			Pellsson_time = "PAL"
+		elseif memory.readbyte(0xFE01) == 0xEA and memory.readbyte(0xFE03) == 0xEA
+		and memory.readbyte(0xFE06) == 0xEA and memory.readbyte(0xFE07) == 0xEA then
+			Pellsson_time = Pellsson_time
+		else
+			Pellsson_time = false
+		end
+	elseif memory.readbyte(0xFDFD) == 0xEA and memory.readbyte(0xFDFE) == 0xEA
+	and memory.readbyte(0xFDFF) == 0xEA and memory.readbyte(0xFE00) == 0xEA
+	and memory.readbyte(0xFE02) == 0xEA and memory.readbyte(0xFE04) == 0xEA
+	and memory.readbyte(0xFE05) == 0xEA then
+		Pellsson_time = Pellsson_time
+	else
+		Pellsson_time = false
+	end
+	
+	if Pellsson_time == false then
+		if game == "PAL SMB" then --If playing a PAL game
+			nes_framerate_numerator = 322445
+			nes_framerate_denominator = 6448
+		else
+			nes_framerate_numerator = 39375000
+			nes_framerate_denominator = 655171
+		end
+	elseif Pellsson_time == "PAL" then
+		nes_framerate_numerator = 322445
+		nes_framerate_denominator = 6448
+	else
+		nes_framerate_numerator = 39375000
+		nes_framerate_denominator = 655171
+	end
+	
+	if end_frame < 0 then --If there is no end frame, update the timer forever
+		if emu.framecount() - start_frame < 0 then
+			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+		else
+			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+		end
+	else --If there is an end frame, stop updating the timer when end frame has been reached
+		if emu.framecount() <= end_frame then
+			if emu.framecount() - start_frame < 0 then
+				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+			else
+				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			end
+		else
+			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
+		end
+	end
+	
+	hours = math.floor(frames / 3600)
+	minutes = math.floor((frames / 60) % 60)
+	seconds = math.floor(frames % 60)
+	milliseconds = math.floor((frames * 1000) % 1000)
+	
+	if negative_delay then --If negative delay, show negative time before timing starts
+		if emu.framecount() - start_frame < 0 then
+			gui.pixelText(177, 215, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		else
+			gui.pixelText(183, 215, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		end
+	else --Otherwise, show 0 hours, 0 minutes, 0 seconds, and 0 milliseconds until timing starts
+		if emu.framecount() - start_frame < 0 then
+			gui.pixelText(183, 215, "00:00:00.000", text_colour, text_back_colour, "fceux") --draw 0 hours, 0 minutes, 0 seconds, and 0 milliseconds
+		else
+			gui.pixelText(183, 215, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		end
+	end
+end
+
+function round(n)
+	return n % 1 >= 0.5 and math.ceil(n) or math.floor(n)
+end
+
 function display_information()
 	local y_counter = 0
 	
@@ -422,7 +535,6 @@ function display_information()
 		y_counter = y_counter + 8
 	end
 	
-	--I blame @slither for wanting me to add this
 	if toggle_display_mario_velocity_adder then
 		gui.drawBox(0, y_counter, 114, y_counter + 8, text_back_colour, text_back_colour)
 		gui.pixelText(0, y_counter, "Speed", text_colour, "clear", "fceux") --Display "Speed"
@@ -454,6 +566,10 @@ while true do
 	
 	if toggle_display_sprite_information then
 		display_spriteslots()
+	end
+	
+	if toggle_display_time then
+		display_time()
 	end
 	display_information()
 	emu.frameadvance()

@@ -2,6 +2,10 @@
 --Thank you to @Simplistic for helping me fix the Frame counter display :)
 --Note: The "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
 
+--Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
+--the right framerate. If you set this variable to a non-valid value, this will make the timer default to you not playing on PAL.
+local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
+
 --toggle features, change to false if you don't want them
 local toggle_display_pellsson                       = true --Not a part of the smb3.lua script, but I thought having this would be useful
 local toggle_display_sprite_hitboxes                = true
@@ -9,6 +13,7 @@ local toggle_display_mario_hitbox                   = true
 local toggle_display_sprite_slot_above_sprite       = true
 local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
+local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true --Not a part of the smb3.lua script, but I thought it would be nice to have this
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
@@ -26,6 +31,11 @@ local hitbox_edge_colour_off  = "#00FF00" --Hitbox back and edge colour for when
 local hitbox_back_colour_off  = "clear"
 local sprite_slot_text_colour = "white"
 local sprite_slot_back_colour = "#66000000"
+
+--Timer settings:
+local negative_delay = true --'true' for negative delay, 'false' for the timer to say "00:00:00.000" until timing starts
+local start_frame    = 0 --0 for TAS timing
+local end_frame      = -1 --Set to -1 for no end frame
 
 --Pellsson settings:
 local XOrg = 0x3AD
@@ -382,6 +392,57 @@ function display_spriteslots()
 	end
 end
 
+function display_time()
+	if region == "PAL" then --If playing a PAL game
+		snes_framerate_numerator = 322445
+		snes_framerate_denominator = 6448
+	else
+		snes_framerate_numerator = 39375000
+		snes_framerate_denominator = 655171
+	end
+	
+	if end_frame < 0 then --If there is no end frame, update the timer forever
+		if emu.framecount() - start_frame < 0 then
+			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+		else
+			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+		end
+	else --If there is an end frame, stop updating the timer when end frame has been reached
+		if emu.framecount() <= end_frame then
+			if emu.framecount() - start_frame < 0 then
+				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+			else
+				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			end
+		else
+			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+		end
+	end
+	
+	hours = math.floor(frames / 3600)
+	minutes = math.floor((frames / 60) % 60)
+	seconds = math.floor(frames % 60)
+	milliseconds = math.floor((frames * 1000) % 1000)
+	
+	if negative_delay then --If negative delay, show negative time before timing starts
+		if emu.framecount() - start_frame < 0 then
+			gui.pixelText(177, 215, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		else
+			gui.pixelText(183, 215, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		end
+	else --Otherwise, show 0 hours, 0 minutes, 0 seconds, and 0 milliseconds until timing starts
+		if emu.framecount() - start_frame < 0 then
+			gui.pixelText(183, 215, "00:00:00.000", text_colour, text_back_colour, "fceux") --draw 0 hours, 0 minutes, 0 seconds, and 0 milliseconds
+		else
+			gui.pixelText(183, 215, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour, "fceux") --draw it
+		end
+	end
+end
+
+function round(n)
+	return n % 1 >= 0.5 and math.ceil(n) or math.floor(n)
+end
+
 function display_information()
 	local y_counter = 0
 	
@@ -422,7 +483,6 @@ function display_information()
 		y_counter = y_counter + 8
 	end
 	
-	--I blame @slither for wanting me to add this
 	if toggle_display_mario_velocity_adder then
 		gui.drawBox(0, y_counter, 114, y_counter + 17, text_back_colour, text_back_colour)
 		gui.pixelText(0, y_counter, "Speed", text_colour, "clear", "fceux") --Display "Speed"
@@ -454,6 +514,10 @@ while true do
 	
 	if toggle_display_sprite_information then
 		display_spriteslots()
+	end
+	
+	if toggle_display_time then
+		display_time()
 	end
 	display_information()
 	emu.frameadvance()
