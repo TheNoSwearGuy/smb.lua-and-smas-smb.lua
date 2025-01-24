@@ -351,15 +351,15 @@ end
 local function hitbox(x1, y1, x2, y2) --Function to draw the hitboxes
 	if memory.readbyte(ram_FrameCounter) % 2 == 0 then --If collisions are being checked, draw "on" colour
 		if y1 > y2 and y2 >= 8 then
-			gui.drawBox(x1, 0, x2, y2 - 8, hitbox_edge_colour_on, hitbox_back_colour_on)
+			gui.drawBox(x1, 0, x2, y2, hitbox_edge_colour_on, hitbox_back_colour_on)
 		elseif y2 >= 8 then
-			gui.drawBox(x1, y1 - 8, x2, y2 - 8, hitbox_edge_colour_on, hitbox_back_colour_on)
+			gui.drawBox(x1, y1, x2, y2, hitbox_edge_colour_on, hitbox_back_colour_on)
 		end
 	else --Otherwise, draw "off" colour
 		if y1 > y2 and y2 >= 8 then
-			gui.drawBox(x1, 0, x2, y2 - 8, hitbox_edge_colour_off, hitbox_back_colour_off)
+			gui.drawBox(x1, 0, x2, y2, hitbox_edge_colour_off, hitbox_back_colour_off)
 		elseif y2 >= 8 then
-			gui.drawBox(x1, y1 - 8, x2, y2 - 8, hitbox_edge_colour_off, hitbox_back_colour_off)
+			gui.drawBox(x1, y1, x2, y2, hitbox_edge_colour_off, hitbox_back_colour_off)
 		end
 	end
 end
