@@ -393,7 +393,7 @@ end
 function display_sprite_slot_above_sprite()
 	for i = 1, 6, 1 do
 		if memory.readbyte(ram_Enemy_Flag + i - 1) ~= 0 then
-			gui.pixelText((memory.readbyte(ram_SprObject_PageLoc + i) * 256 + memory.readbyte(ram_SprObject_X_Position + i)) - (memory.readbyte(ram_ScreenLeft_PageLoc) * 256 + memory.readbyte(ram_ScreenLeft_X_Pos)) + 2, memory.readbyte(ram_SprObject_Y_Position + i) - 9, string.format("[%d]", i - 1), sprite_slot_text_colour, sprite_slot_back_colour, "fceux") --draw the sprite slot above it
+			gui.pixelText((memory.readbyte(ram_SprObject_PageLoc + i) * 256 + memory.readbyte(ram_SprObject_X_Position + i)) - (memory.readbyte(ram_ScreenLeft_PageLoc) * 256 + memory.readbyte(ram_ScreenLeft_X_Pos)) + 2, memory.readbyte(ram_SprObject_Y_Position + i) - 1, string.format("[%d]", i - 1), sprite_slot_text_colour, sprite_slot_back_colour, "fceux") --draw the sprite slot above it
 		end
 	end
 end
