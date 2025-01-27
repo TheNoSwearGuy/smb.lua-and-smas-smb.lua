@@ -138,7 +138,8 @@ function display_pellsson() --Code to display Pellsson information
 	or emu.read(wram_FloateyNum_Timer + 7, emu.memType.cpu) == 0x2A
 	or emu.read(wram_FloateyNum_Timer + 8, emu.memType.cpu) == 0x2A
 	or emu.read(wram_FloateyNum_Timer + 9, emu.memType.cpu) == 0x2A
-	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 7 then
+	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 7
+	or emu.read(wram_Sample7SoundQueue, emu.memType.cpu) == 7 and emu.read(wram_OperMode, emu.memType.cpu) ~= 2 then
 		if FrameDisplay == -1 then
 			FrameDisplay = emu.read(wram_FrameCounter, emu.memType.cpu)
 			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)

@@ -134,7 +134,8 @@ function display_pellsson() --Code to display Pellsson information
 	or memory.readbyte(wram_FloateyNum_Timer + 7) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 8) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 9) == 0x2A
-	or memory.readbyte(wram_GameEngineSubroutine) == 7 then
+	or memory.readbyte(wram_GameEngineSubroutine) == 7
+	or memory.readbyte(wram_Sample7SoundQueue) == 7 and memory.readbyte(wram_OperMode) ~= 2 then
 		if FrameDisplay == -1 then
 			FrameDisplay = memory.readbyte(wram_FrameCounter)
 			Frame = memory.readbyte(wram_FrameCounter)
