@@ -56,6 +56,7 @@ local ram_SprObject_PageLoc     = 0x6D
 local ram_SprObject_X_Position  = 0x86
 local ram_Player_Y_Speed        = 0x9F
 local ram_SprObject_Y_Position  = 0xCE
+local ram_NoiseSoundQueue       = 0xFD
 local ram_Square2SoundQueue     = 0xFE
 local ram_FloateyNum_Timer      = 0x12C
 local ram_SprObject_X_MoveForce = 0x400
@@ -222,7 +223,8 @@ function display_pellsson() --Code to display Pellsson information
 	or emu.read(ram_FloateyNum_Timer + 2, emu.memType.cpu) == 0x2A
 	or emu.read(ram_FloateyNum_Timer + 3, emu.memType.cpu) == 0x2A
 	or emu.read(ram_FloateyNum_Timer + 4, emu.memType.cpu) == 0x2A
-	or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 7 then
+	or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 7
+	or emu.read(ram_NoiseSoundQueue, emu.memType.cpu) == 1 and emu.read(ram_OperMode, emu.memType.cpu) ~= 2 then
 		if FrameDisplay == -1 then
 			FrameDisplay = emu.read(ram_FrameCounter, emu.memType.cpu)
 			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
