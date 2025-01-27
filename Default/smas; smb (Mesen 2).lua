@@ -143,7 +143,8 @@ function display_pellsson() --Code to display Pellsson information
 	or emu.read(wram_FloateyNum_Timer + 7, emu.memType.snesMemory) == 0x2A
 	or emu.read(wram_FloateyNum_Timer + 8, emu.memType.snesMemory) == 0x2A
 	or emu.read(wram_FloateyNum_Timer + 9, emu.memType.snesMemory) == 0x2A
-	or emu.read(wram_GameEngineSubroutine, emu.memType.snesMemory) == 7 then
+	or emu.read(wram_GameEngineSubroutine, emu.memType.snesMemory) == 7
+	or emu.read(wram_Sample7SoundQueue, emu.memType.snesMemory) == 7 and emu.read(wram_OperMode, emu.memType.snesMemory) ~= 2 then
 		if FrameDisplay == -1 then
 			FrameDisplay = emu.read(wram_FrameCounter, emu.memType.snesMemory)
 			Frame = emu.read(wram_FrameCounter, emu.memType.snesMemory)
