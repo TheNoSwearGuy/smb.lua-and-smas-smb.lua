@@ -56,6 +56,7 @@ local ram_SprObject_PageLoc     = 0x6D
 local ram_SprObject_X_Position  = 0x86
 local ram_Player_Y_Speed        = 0x9F
 local ram_SprObject_Y_Position  = 0xCE
+local ram_NoiseSoundQueue       = 0xFD
 local ram_Square2SoundQueue     = 0xFE
 local ram_FloateyNum_Timer      = 0x12C
 local ram_SprObject_X_MoveForce = 0x400
@@ -218,7 +219,8 @@ function display_pellsson() --Code to display Pellsson information
 	or memory.readbyte(ram_FloateyNum_Timer + 2) == 0x2A
 	or memory.readbyte(ram_FloateyNum_Timer + 3) == 0x2A
 	or memory.readbyte(ram_FloateyNum_Timer + 4) == 0x2A
-	or memory.readbyte(ram_GameEngineSubroutine) == 7 then
+	or memory.readbyte(ram_GameEngineSubroutine) == 7
+	or memory.readbyte(ram_NoiseSoundQueue) == 1 and memory.readbyte(ram_OperMode) ~= 2 then
 		if FrameDisplay == -1 then
 			FrameDisplay = memory.readbyte(ram_FrameCounter)
 			Frame = memory.readbyte(ram_FrameCounter)
