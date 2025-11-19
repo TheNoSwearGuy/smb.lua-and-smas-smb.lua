@@ -7,4 +7,4 @@ Unless you're using Kaname, the framerule counter only works with the following 
 
 For BizHawk, the framerule counter desyncs when you soft reset or hard reset at least 32,767 non-lag frames after loading the ROM file. For Mesen 2, Mesen, and MesenRTA, the framerule counter desyncs after 32,767 lag frames. For FCEUX, the framerule counter desyncs when you soft reset with at least one lag frame before soft resetting after loading the ROM file, as soft resetting doesn't reset the lag frame counter. Hard resetting, however, does.
 
-The 256×224p versions of the NES sleek versions covers the text the entire time and the ones digit of the score when the remainder is displayed.
+The 256×224p versions of the NES sleek versions covers the status bar text the entire time and the ones digit of the score when the remainder is displayed.
