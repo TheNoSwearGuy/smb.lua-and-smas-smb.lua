@@ -1,12 +1,10 @@
-For the NES versions of the scripts — default and sleek — before running it, you MUST open the file and set the 'game' variable to either the game you're playing or the game the ROMhack you're playing is based off of in order to have accurate warp zone remainders, the framerule counter to be accurate, and for the timer to use the right framerate. For example, if you're playing Super Bob, that game is based off of NTSC SMB, so you would set the 'game' variable to '"NTSC SMB"'. Pellsson ROM is automatically detected and is prioritized over all the other four games, so if you're using Pellsson, it doesn't matter what you have this variable set to. If you set the 'game' variable to a non-valid value, this will cause you to not have accurate warp zone remainders, and it will make the framerule counter and the timer default to you not playing on PAL SMB. The 'game' variable is set to '"NTSC SMB"' by default.
+Before running any of the scripts — NES or SNES, default or sleek — you MUST open the file and set the set the 'region' variable to the region you're playing on — NTSC or PAL — in order for the framerule counter to be accurate and for the timer to use the right framerate. For the NES versions of the scripts, Kaname for SMB1 (NTSC and PAL), SMB2J, and ANNSMB is automatically detected and is prioritized over the regular games, so if you're using that, it doesn't matter what you have the 'region' variable set to. If you set the 'region' variable to a non-valid value, this will make the framerule counter and the timer default to you not playing on PAL. The 'region' variable is set to '"NTSC"' by default.
 
-For the SNES versions of the scripts — default and sleek — before running it, you MUST open the file and set the 'region' variable to the region you're playing on — '"NTSC"' or '"PAL"' — in order for the timer to use the right framerate. If you set the 'region' variable to a non-valid value, this will make the timer default to you not playing on PAL. The 'region' variable is set to '"NTSC"' by default.
-
-I will not implement a framerule counter for the All-Stars versions of the scripts because I don't know how I'll be able to. Unless you're using Pellsson, the framerule counter only works with the following routes:
+Unless you're using Pellsson, the framerule counter only works with the following routes:
 - Start → Small → End
 - Start → Small → Mushroom → End
 - Start → Small → Mushroom → Fire → End
 
-For BizHawk, the framerule counter desyncs when you soft reset or hard reset at least 32,767 non-lag frames after loading the ROM file, and for Mesen 2, Mesen, and MesenRTA, the framerule counter desyncs after 32,767 lag frames.
+For BizHawk, the framerule counter desyncs when you soft reset or hard reset at least 32,767 non-lag frames after loading the ROM file. For Mesen 2, Mesen, and MesenRTA, the framerule counter desyncs after 32,767 lag frames. For FCEUX, the framerule counter desyncs when you soft reset with at least one lag frame before soft resetting after loading the ROM file, as soft resetting doesn't reset the lag frame counter. Hard resetting, however, does.
 
-The 256×224p versions of the NES sleek versions covers the text and the ones digit of the score.
+The 256×224p versions of the NES sleek versions covers the text the entire time and the ones digit of the score when the remainder is displayed.
