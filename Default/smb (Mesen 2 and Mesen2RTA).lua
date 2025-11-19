@@ -1,4 +1,4 @@
-﻿--Thank you to @Simplistic for helping me fix the Frame counter display and @slither for helping me with the framerule counter
+--Thank you to @Simplistic for helping me fix the Frame counter display and @slither for helping me with the framerule counter
 --Note: unless you're using Kaname for SMB1 (NTSC or PAL), SMB2J, or ANNSMB, the framerule counter only works with the following routes:
 --• Start → Small → End
 --• Start → Small → Mushroom → End
@@ -107,52 +107,52 @@ function drawString(x, y, text, text_colour, text_back_colour)
 end
 
 function display_practice_information() --Code to display practice information
-	if emu.read(0xFEFD, emu.memType.cpu) == 0xEA and emu.read(0xFEFE, emu.memType.cpu) == 0xEA --Check if we're playing on Kaname
-	and emu.read(0xFEFF, emu.memType.cpu) == 0xEA and emu.read(0xFF0B, emu.memType.cpu) == 0x4C
-	and emu.read(0xFF0D, emu.memType.cpu) == 0x84 and emu.read(0xFF0E, emu.memType.cpu) == 0x4C
-	and emu.read(0xFF10, emu.memType.cpu) == 0x80 then
+	if emu.read(0xFEFD, emu.memType.nesMemory) == 0xEA and emu.read(0xFEFE, emu.memType.nesMemory) == 0xEA --Check if we're playing on Kaname
+	and emu.read(0xFEFF, emu.memType.nesMemory) == 0xEA and emu.read(0xFF0B, emu.memType.nesMemory) == 0x4C
+	and emu.read(0xFF0D, emu.memType.nesMemory) == 0x84 and emu.read(0xFF0E, emu.memType.nesMemory) == 0x4C
+	and emu.read(0xFF10, emu.memType.nesMemory) == 0x80 then
 		Kaname_practice = true
 	else
 		Kaname_practice = false
 	end
 	
 	if Kaname_practice then
-		framerule = emu.read(ram_CurrentRule, emu.memType.cpu) * 1000
-			+ emu.read(ram_CurrentRule + 1, emu.memType.cpu) * 100
-			+ emu.read(ram_CurrentRule + 2, emu.memType.cpu) * 10
-			+ emu.read(ram_CurrentRule + 3, emu.memType.cpu)
+		framerule = emu.read(ram_CurrentRule, emu.memType.nesMemory) * 1000
+			+ emu.read(ram_CurrentRule + 1, emu.memType.nesMemory) * 100
+			+ emu.read(ram_CurrentRule + 2, emu.memType.nesMemory) * 10
+			+ emu.read(ram_CurrentRule + 3, emu.memType.nesMemory)
 	else
-		local RNG = emu.read(ram_PseudoRandomBitReg, emu.memType.cpu) * 256 + emu.read(ram_PseudoRandomBitReg + 1, emu.memType.cpu)
+		local RNG = emu.read(ram_PseudoRandomBitReg, emu.memType.nesMemory) * 256 + emu.read(ram_PseudoRandomBitReg + 1, emu.memType.nesMemory)
 		local framecount_minus_lagcount = RNGmap[RNG]
-		while framecount_minus_lagcount < (emu.getState().ppu.frameCount) do
-			if framecount_minus_lagcount < (emu.getState().ppu.frameCount) then
+		while framecount_minus_lagcount < (emu.getState().frameCount) do
+			if framecount_minus_lagcount < (emu.getState().frameCount) then
 				framecount_minus_lagcount = framecount_minus_lagcount + 32767
 			end
 		end
-		if framecount_minus_lagcount > (emu.getState().ppu.frameCount) then
+		if framecount_minus_lagcount > (emu.getState().frameCount) then
 			framecount_minus_lagcount = framecount_minus_lagcount - 32767
 		end
 		if region == "PAL" then
-			if emu.read(ram_PlayerStatus, emu.memType.cpu) == 0 then
+			if emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 0 then
 				framerule = math.floor((framecount_minus_lagcount - 1) / 18 + 1) % 10000
-			elseif emu.read(ram_PlayerStatus, emu.memType.cpu) == 1 then
+			elseif emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 1 then
 				framerule = math.floor((framecount_minus_lagcount - 60) / 18 + 1) % 10000
 			else
 				framerule = math.floor((framecount_minus_lagcount - 123) / 18 + 1) % 10000
 			end
 		else
-			if emu.read(0xE141, emu.memType.cpu) == 0x38 and emu.read(0xE142, emu.memType.cpu) == 0x44
-			and emu.read(0xE143, emu.memType.cpu) == 0xBA and emu.read(0xE144, emu.memType.cpu) == 0xAA
-			and emu.read(0xE145, emu.memType.cpu) == 0xB2 and emu.read(0xE146, emu.memType.cpu) == 0xAA
-			and emu.read(0xE147, emu.memType.cpu) == 0x44 and emu.read(0xE148, emu.memType.cpu) == 0x38 then --If playing an FDS game
+			if emu.read(0xE141, emu.memType.nesMemory) == 0x38 and emu.read(0xE142, emu.memType.nesMemory) == 0x44
+			and emu.read(0xE143, emu.memType.nesMemory) == 0xBA and emu.read(0xE144, emu.memType.nesMemory) == 0xAA
+			and emu.read(0xE145, emu.memType.nesMemory) == 0xB2 and emu.read(0xE146, emu.memType.nesMemory) == 0xAA
+			and emu.read(0xE147, emu.memType.nesMemory) == 0x44 and emu.read(0xE148, emu.memType.nesMemory) == 0x38 then --If playing an FDS game
 				x = 2
 			else
 				x = 1
 			end
 			
-			if emu.read(ram_PlayerStatus, emu.memType.cpu) == 0 then
+			if emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 0 then
 				framerule = math.floor((framecount_minus_lagcount - x) / 21 + 1) % 10000
-			elseif emu.read(ram_PlayerStatus, emu.memType.cpu) == 1 then
+			elseif emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 1 then
 				framerule = math.floor((framecount_minus_lagcount - x - 59) / 21 + 1) % 10000
 			else
 				framerule = math.floor((framecount_minus_lagcount - x - 122) / 21 + 1) % 10000
@@ -160,14 +160,14 @@ function display_practice_information() --Code to display practice information
 		end
 	end
 	
-	local sockvalue = (emu.read(ram_SprObject_X_Position, emu.memType.cpu) << 8)
-		+ emu.read(ram_SprObject_X_MoveForce, emu.memType.cpu)
-		+ ((0xFF - emu.read(ram_SprObject_Y_Position, emu.memType.cpu) >> 2) * 0x280)
-	if emu.read(ram_IntervalTimerControl, emu.memType.cpu) & 3 == 2 then
-		sock = (sockvalue & 0xFFF) + (emu.read(ram_SprObject_Y_Position, emu.memType.cpu) & 3) * 0x1000
+	local sockvalue = (emu.read(ram_SprObject_X_Position, emu.memType.nesMemory) << 8)
+		+ emu.read(ram_SprObject_X_MoveForce, emu.memType.nesMemory)
+		+ ((0xFF - emu.read(ram_SprObject_Y_Position, emu.memType.nesMemory) >> 2) * 0x280)
+	if emu.read(ram_IntervalTimerControl, emu.memType.nesMemory) & 3 == 2 then
+		sock = (sockvalue & 0xFFF) + (emu.read(ram_SprObject_Y_Position, emu.memType.nesMemory) & 3) * 0x1000
 		DontDisplaySock = false
 	end
-	if emu.read(ram_DisableScreenFlag, emu.memType.cpu) ~= 0 or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 0 or emu.read(ram_AltEntranceControl, emu.memType.cpu) == 2 then
+	if emu.read(ram_DisableScreenFlag, emu.memType.nesMemory) ~= 0 or emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) == 0 or emu.read(ram_AltEntranceControl, emu.memType.nesMemory) == 2 then
 		DontDisplaySock = true
 	end
 	if DontDisplaySock then
@@ -176,10 +176,10 @@ function display_practice_information() --Code to display practice information
 		drawString(1, 9, string.format("S:%04X", sock), text_colour, text_back_colour)
 	end
 	
-	if emu.read(ram_ScreenRoutineTask, emu.memType.cpu) == 4 then
+	if emu.read(ram_ScreenRoutineTask, emu.memType.nesMemory) == 4 then
 		local chars = "0123456789ABCDEFGHIJK"
-		Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
-		ScreenEnterDisplay = string.sub(chars, emu.read(ram_IntervalTimerControl, emu.memType.cpu) + 1, emu.read(ram_IntervalTimerControl, emu.memType.cpu) + 1)
+		Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+		ScreenEnterDisplay = string.sub(chars, emu.read(ram_IntervalTimerControl, emu.memType.nesMemory) + 1, emu.read(ram_IntervalTimerControl, emu.memType.nesMemory) + 1)
 	end
 	drawString(1, 25, string.format(" :%s", ScreenEnterDisplay), text_colour, text_back_colour)
 	emu.drawPixel(1, 27, text_colour)
@@ -192,54 +192,54 @@ function display_practice_information() --Code to display practice information
 	emu.drawPixel(2, 30, text_colour)
 	emu.drawPixel(1, 31, text_colour)
 	
-	if emu.read(ram_Enemy_Flag, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID, emu.memType.cpu) == 0x2D
-	and emu.read(ram_SprObject_X_Position + 1, emu.memType.cpu) == emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(ram_Enemy_Flag + 1, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 1, emu.memType.cpu) == 0x2D
-	and emu.read(ram_SprObject_X_Position + 2, emu.memType.cpu) == emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(ram_Enemy_Flag + 2, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 2, emu.memType.cpu) == 0x2D
-	and emu.read(ram_SprObject_X_Position + 3, emu.memType.cpu) == emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(ram_Enemy_Flag + 3, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 3, emu.memType.cpu) == 0x2D
-	and emu.read(ram_SprObject_X_Position + 4, emu.memType.cpu) == emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(ram_Enemy_Flag + 4, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 4, emu.memType.cpu) == 0x2D
-	and emu.read(ram_SprObject_X_Position + 5, emu.memType.cpu) == emu.read(ram_BowserOrigXPos, emu.memType.cpu) then
+	if emu.read(ram_Enemy_Flag, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID, emu.memType.nesMemory) == 0x2D
+	and emu.read(ram_SprObject_X_Position + 1, emu.memType.nesMemory) == emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+	or emu.read(ram_Enemy_Flag + 1, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 1, emu.memType.nesMemory) == 0x2D
+	and emu.read(ram_SprObject_X_Position + 2, emu.memType.nesMemory) == emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+	or emu.read(ram_Enemy_Flag + 2, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 2, emu.memType.nesMemory) == 0x2D
+	and emu.read(ram_SprObject_X_Position + 3, emu.memType.nesMemory) == emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+	or emu.read(ram_Enemy_Flag + 3, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 3, emu.memType.nesMemory) == 0x2D
+	and emu.read(ram_SprObject_X_Position + 4, emu.memType.nesMemory) == emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+	or emu.read(ram_Enemy_Flag + 4, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 4, emu.memType.nesMemory) == 0x2D
+	and emu.read(ram_SprObject_X_Position + 5, emu.memType.nesMemory) == emu.read(ram_BowserOrigXPos, emu.memType.nesMemory) then
 		BowserFrame = true
 	end
-	if (emu.read(ram_OperMode, emu.memType.cpu) == 0 and emu.read(ram_FrameCounter, emu.memType.cpu) & 1 == 0)
-	or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 7 then
+	if (emu.read(ram_OperMode, emu.memType.nesMemory) == 0 and emu.read(ram_FrameCounter, emu.memType.nesMemory) & 1 == 0)
+	or emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) == 7 then
 		BowserFrame = false
 		if FrameDisplay == -1 then
-			FrameDisplay = emu.read(ram_FrameCounter, emu.memType.cpu)
-			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
+			FrameDisplay = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
 			Rule = framerule
 		end
-	elseif emu.read(ram_JumpSwimTimer, emu.memType.cpu) == 0x20
-	or emu.read(ram_FloateyNum_Timer, emu.memType.cpu) == 0x2A
-	or emu.read(ram_FloateyNum_Timer + 1, emu.memType.cpu) == 0x2A
-	or emu.read(ram_FloateyNum_Timer + 2, emu.memType.cpu) == 0x2A
-	or emu.read(ram_FloateyNum_Timer + 3, emu.memType.cpu) == 0x2A
-	or emu.read(ram_FloateyNum_Timer + 4, emu.memType.cpu) == 0x2A
-	or emu.read(ram_FloateyNum_Timer + 5, emu.memType.cpu) == 0x2A
-	or emu.read(ram_Square1SoundQueue, emu.memType.cpu) == 0x20 then
+	elseif emu.read(ram_JumpSwimTimer, emu.memType.nesMemory) == 0x20
+	or emu.read(ram_FloateyNum_Timer, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_FloateyNum_Timer + 1, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_FloateyNum_Timer + 2, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_FloateyNum_Timer + 3, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_FloateyNum_Timer + 4, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_FloateyNum_Timer + 5, emu.memType.nesMemory) == 0x2A
+	or emu.read(ram_Square1SoundQueue, emu.memType.nesMemory) == 0x20 then
 		BowserFrame = false
 		if FrameDisplay == -1 then
-			FrameDisplay = emu.read(ram_FrameCounter, emu.memType.cpu)
-			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
+			FrameDisplay = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
 		end
 	elseif BowserFrame then
-		if (emu.read(ram_Enemy_Flag, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID, emu.memType.cpu) == 0x2D
-		and emu.read(ram_SprObject_X_Position + 1, emu.memType.cpu) ~= emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(ram_Enemy_Flag + 1, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 1, emu.memType.cpu) == 0x2D
-		and emu.read(ram_SprObject_X_Position + 2, emu.memType.cpu) ~= emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(ram_Enemy_Flag + 2, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 2, emu.memType.cpu) == 0x2D
-		and emu.read(ram_SprObject_X_Position + 3, emu.memType.cpu) ~= emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(ram_Enemy_Flag + 3, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 3, emu.memType.cpu) == 0x2D
-		and emu.read(ram_SprObject_X_Position + 4, emu.memType.cpu) ~= emu.read(ram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(ram_Enemy_Flag + 4, emu.memType.cpu, 1) > 0 and emu.read(ram_Enemy_ID + 4, emu.memType.cpu) == 0x2D
-		and emu.read(ram_SprObject_X_Position + 5, emu.memType.cpu) ~= emu.read(ram_BowserOrigXPos, emu.memType.cpu))
-		and emu.read(ram_FrameCounter, emu.memType.cpu) & 3 == 0 then
+		if (emu.read(ram_Enemy_Flag, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID, emu.memType.nesMemory) == 0x2D
+		and emu.read(ram_SprObject_X_Position + 1, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+		or emu.read(ram_Enemy_Flag + 1, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 1, emu.memType.nesMemory) == 0x2D
+		and emu.read(ram_SprObject_X_Position + 2, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+		or emu.read(ram_Enemy_Flag + 2, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 2, emu.memType.nesMemory) == 0x2D
+		and emu.read(ram_SprObject_X_Position + 3, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+		or emu.read(ram_Enemy_Flag + 3, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 3, emu.memType.nesMemory) == 0x2D
+		and emu.read(ram_SprObject_X_Position + 4, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+		or emu.read(ram_Enemy_Flag + 4, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + 4, emu.memType.nesMemory) == 0x2D
+		and emu.read(ram_SprObject_X_Position + 5, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory))
+		and emu.read(ram_FrameCounter, emu.memType.nesMemory) & 3 == 0 then
 			if FrameDisplay == -1 then
-				FrameDisplay = emu.read(ram_FrameCounter, emu.memType.cpu)
-				Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
+				FrameDisplay = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+				Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
 			end
 			BowserFrame = false
 		end
@@ -247,54 +247,54 @@ function display_practice_information() --Code to display practice information
 		FrameDisplay = -1
 	end
 	drawString(1, 33, string.format(" :%03d", Frame), text_colour, text_back_colour)
-	if emu.read(0xD, emu.memType.palette) == 7 then
+	if emu.read(0x3F0D, emu.memType.nesPpuMemory) == 7 then
 		drawString(1, 33, "F", 0x561D00, 0xFF000000)
-	elseif emu.read(0xD, emu.memType.palette) == 0x17 then
+	elseif emu.read(0x3F0D, emu.memType.nesPpuMemory) == 0x17 then
 		drawString(1, 33, "F", 0x994E00, 0xFF000000)
 	else
 		drawString(1, 33, "F", 0xEA9E22, 0xFF000000)
 	end
 	
-	User_Var_ADisplay = emu.read(User_Var_A, emu.memType.cpu)
-	User_Var_BDisplay = emu.read(User_Var_B, emu.memType.cpu)
+	User_Var_ADisplay = emu.read(User_Var_A, emu.memType.nesMemory)
+	User_Var_BDisplay = emu.read(User_Var_B, emu.memType.nesMemory)
 	
 	drawString(1, 41, string.format("A:%03d", User_Var_ADisplay), text_colour, text_back_colour)
 	
 	drawString(1, 49, string.format("B:%03d", User_Var_BDisplay), text_colour, text_back_colour)
 	
-	if emu.read(ram_StarFlagTaskControl, emu.memType.cpu) >= 4
-	or emu.read(ram_OperMode, emu.memType.cpu) == 2
-	or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 2
-	or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 3
-	or (emu.read(ram_ScreenRoutineTask, emu.memType.cpu) == 7 or emu.read(ram_ScreenRoutineTask, emu.memType.cpu) == 8) and emu.read(ram_DisableScreenFlag, emu.memType.cpu) == 0 then
+	if emu.read(ram_StarFlagTaskControl, emu.memType.nesMemory) >= 4
+	or emu.read(ram_OperMode, emu.memType.nesMemory) == 2
+	or emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) == 2
+	or emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) == 3
+	or (emu.read(ram_ScreenRoutineTask, emu.memType.nesMemory) == 7 or emu.read(ram_ScreenRoutineTask, emu.memType.nesMemory) == 8) and emu.read(ram_DisableScreenFlag, emu.memType.nesMemory) == 0 then
 		if StarFlagTaskControlDisplay == -1 then
-			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
-			StarFlagTaskControlDisplay = emu.read(ram_IntervalTimerControl, emu.memType.cpu)
+			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+			StarFlagTaskControlDisplay = emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)
 		end
 		drawString(1, 57, string.format("R:%02d", StarFlagTaskControlDisplay), text_colour, text_back_colour)
 	else
 		StarFlagTaskControlDisplay = -1
 	end
-	if emu.read(ram_OperMode_Task, emu.memType.cpu) == 4 then
+	if emu.read(ram_OperMode_Task, emu.memType.nesMemory) == 4 then
 		if OperMode_TaskDisplay == -1 then
-			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
-			OperMode_TaskDisplay = emu.read(ram_IntervalTimerControl, emu.memType.cpu)
+			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+			OperMode_TaskDisplay = emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)
 			StarFlagTaskControlDisplay = OperMode_TaskDisplay
 		end
 	else
 		OperMode_TaskDisplay = -1
 	end
-	if emu.read(ram_OperMode_Task, emu.memType.cpu) == 5 then
+	if emu.read(ram_OperMode_Task, emu.memType.nesMemory) == 5 then
 		if OperMode_TaskDisplay2 == -1 then
-			Frame = emu.read(ram_FrameCounter, emu.memType.cpu)
-			OperMode_TaskDisplay2 = emu.read(ram_IntervalTimerControl, emu.memType.cpu)
+			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
+			OperMode_TaskDisplay2 = emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)
 			StarFlagTaskControlDisplay = OperMode_TaskDisplay2
 		end
 	else
 		OperMode_TaskDisplay2 = -1
 	end
 	
-	if emu.read(ram_DisableScreenFlag, emu.memType.cpu) ~= 0 or emu.read(ram_GameEngineSubroutine, emu.memType.cpu) == 0 then
+	if emu.read(ram_DisableScreenFlag, emu.memType.nesMemory) ~= 0 or emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) == 0 then
 		drawString(1, 1, "R:    ", text_colour, text_back_colour)
 	else
 		drawString(1, 1, string.format("R:%04d", Rule), text_colour, text_back_colour)
@@ -302,7 +302,7 @@ function display_practice_information() --Code to display practice information
 end
 
 local function hitbox(x1, y1, x2, y2) --Function to draw the hitboxes
-	if emu.read(ram_FrameCounter, emu.memType.cpu) & 1 == 0 or toggle_display_hitbox_collision_check == false then
+	if emu.read(ram_FrameCounter, emu.memType.nesMemory) & 1 == 0 or toggle_display_hitbox_collision_check == false then
 		if y1 > y2 and y2 >= 8 then --If collisions are being checked or don't show hitbox collision check, draw "on" colour
 			emu.drawRectangle(x1, 0, x2 - x1 + 1, 0 + y2 + 1, hitbox_back_colour_on, 1, 1, 1)
 			emu.drawRectangle(x1, 0, x2 - x1 + 1, 0 + y2 + 1, hitbox_edge_colour_on, 0, 1, 1)
@@ -323,35 +323,35 @@ end
 
 function display_sprite_hitboxes()
 	for i = 1, 6, 1 do --Draw enemy and power-up hitboxes
-		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.cpu) ~= 0 then
-			hitbox(emu.read(ram_BoundingBox_UL_Corner + (i * 4), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 1), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 2), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 3), emu.memType.cpu))
+		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.nesMemory) ~= 0 then
+			hitbox(emu.read(ram_BoundingBox_UL_Corner + (i * 4), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 1), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 2), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + (i * 4 + 3), emu.memType.nesMemory))
 		end
 	end
 	
 	for i = 1, 2, 1 do --Draw fireball hitboxes
-		if emu.read(ram_Fireball_State + i - 1, emu.memType.cpu) ~= 0 then
-			hitbox(emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 1), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 2), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 3), emu.memType.cpu))
+		if emu.read(ram_Fireball_State + i - 1, emu.memType.nesMemory) ~= 0 then
+			hitbox(emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 1), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 2), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((6 + i) * 4 + 3), emu.memType.nesMemory))
 		end
 	end
 	
 	for i = 1, 9, 1 do --Draw hammer and coin hitboxes
-		if emu.read(ram_Misc_State + i - 1, emu.memType.cpu) ~= 0 then
-			hitbox(emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 1), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 2), emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 3), emu.memType.cpu))
+		if emu.read(ram_Misc_State + i - 1, emu.memType.nesMemory) ~= 0 then
+			hitbox(emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 1), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 2), emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + ((8 + i) * 4 + 3), emu.memType.nesMemory))
 		end
 	end
 end
 
 function display_mario_hitbox()
-	if emu.read(ram_GameEngineSubroutine, emu.memType.cpu) ~= 0 then --If Mario is alive, draw Mario's hitbox
-		hitbox(emu.read(ram_BoundingBox_UL_Corner, emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + 1, emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + 2, emu.memType.cpu), emu.read(ram_BoundingBox_UL_Corner + 3, emu.memType.cpu))
+	if emu.read(ram_GameEngineSubroutine, emu.memType.nesMemory) ~= 0 then --If Mario is alive, draw Mario's hitbox
+		hitbox(emu.read(ram_BoundingBox_UL_Corner, emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + 1, emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + 2, emu.memType.nesMemory), emu.read(ram_BoundingBox_UL_Corner + 3, emu.memType.nesMemory))
 	end
 end
 
 function display_sprite_slot_above_sprite()
 	for i = 1, 6, 1 do
-		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.cpu) ~= 0 then
-			emu.drawLine((emu.read(ram_SprObject_PageLoc + i, emu.memType.cpu) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.cpu)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.cpu) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.cpu)) + 1, emu.read(ram_SprObject_Y_Position + i, emu.memType.cpu) - 1, (emu.read(ram_SprObject_PageLoc + i, emu.memType.cpu) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.cpu)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.cpu) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.cpu)) + 1, emu.read(ram_SprObject_Y_Position + i, emu.memType.cpu) + 7, sprite_slot_back_colour, 1, 1)
-			emu.drawString((emu.read(ram_SprObject_PageLoc + i, emu.memType.cpu) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.cpu)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.cpu) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.cpu)) + 2, emu.read(ram_SprObject_Y_Position + i, emu.memType.cpu), string.format("[%d]", i - 1), sprite_slot_text_colour, sprite_slot_back_colour, 1, 1) --draw the sprite slot above it
+		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.nesMemory) ~= 0 then
+			emu.drawLine((emu.read(ram_SprObject_PageLoc + i, emu.memType.nesMemory) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.nesMemory)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.nesMemory) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.nesMemory)) + 1, emu.read(ram_SprObject_Y_Position + i, emu.memType.nesMemory) - 1, (emu.read(ram_SprObject_PageLoc + i, emu.memType.nesMemory) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.nesMemory)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.nesMemory) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.nesMemory)) + 1, emu.read(ram_SprObject_Y_Position + i, emu.memType.nesMemory) + 7, sprite_slot_back_colour, 1, 1)
+			emu.drawString((emu.read(ram_SprObject_PageLoc + i, emu.memType.nesMemory) * 256 + emu.read(ram_SprObject_X_Position + i, emu.memType.nesMemory)) - (emu.read(ram_ScreenLeft_PageLoc, emu.memType.nesMemory) * 256 + emu.read(ram_ScreenLeft_X_Pos, emu.memType.nesMemory)) + 2, emu.read(ram_SprObject_Y_Position + i, emu.memType.nesMemory), string.format("[%d]", i - 1), sprite_slot_text_colour, sprite_slot_back_colour, 0, 1, 1) --draw the sprite slot above it
 		end
 	end
 end
@@ -359,14 +359,14 @@ end
 function display_spriteslots()
 	local y_counter = 68 --for listing sprites and removing blank spriteslot's spaces
 	for i = 1, 6, 1 do
-		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.cpu) ~= (toggle_display_sprite_information_after_death and -1 or 0) then --if the sprite isn't dead, unless ..._after_death is set
-			if emu.read(ram_Enemy_Flag + i - 1, emu.memType.cpu) == 0 then --If dead, display faded text and background
-				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(ram_Enemy_ID + i - 1, emu.memType.cpu)), text_faded_colour, text_faded_back_colour) --display sprite slot number and sprite ID
-				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position + i, emu.memType.cpu), emu.read(ram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(ram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(ram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_faded_colour, text_faded_back_colour) --draw position
+		if emu.read(ram_Enemy_Flag + i - 1, emu.memType.nesMemory) ~= (toggle_display_sprite_information_after_death and -1 or 0) then --if the sprite isn't dead, unless ..._after_death is set
+			if emu.read(ram_Enemy_Flag + i - 1, emu.memType.nesMemory) == 0 then --If dead, display faded text and background
+				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(ram_Enemy_ID + i - 1, emu.memType.nesMemory)), text_faded_colour, text_faded_back_colour) --display sprite slot number and sprite ID
+				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position + i, emu.memType.nesMemory), emu.read(ram_SprObject_X_MoveForce + i, emu.memType.nesMemory) >> 4, emu.read(ram_SprObject_Y_Position + i, emu.memType.nesMemory), emu.read(ram_SprObject_YMF_Dummy + i, emu.memType.nesMemory)), text_faded_colour, text_faded_back_colour) --draw position
 				y_counter = y_counter + 8 --add to y_counter so the next sprite is shown below the previous
 			else --Otherwise, display fully-bright text and background
-				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(ram_Enemy_ID + i - 1, emu.memType.cpu)), text_colour, text_back_colour) --display sprite slot number and sprite ID
-				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position + i, emu.memType.cpu), emu.read(ram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(ram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(ram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_colour, text_back_colour) --draw position
+				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(ram_Enemy_ID + i - 1, emu.memType.nesMemory)), text_colour, text_back_colour) --display sprite slot number and sprite ID
+				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position + i, emu.memType.nesMemory), emu.read(ram_SprObject_X_MoveForce + i, emu.memType.nesMemory) >> 4, emu.read(ram_SprObject_Y_Position + i, emu.memType.nesMemory), emu.read(ram_SprObject_YMF_Dummy + i, emu.memType.nesMemory)), text_colour, text_back_colour) --draw position
 				y_counter = y_counter + 8 --add to y_counter so the next sprite is shown below the previous
 			end
 		end
@@ -374,19 +374,19 @@ function display_spriteslots()
 end
 
 function display_time()
-	if emu.read(0xFEFD, emu.memType.cpu) == 0xEA and emu.read(0xFEFE, emu.memType.cpu) == 0xEA --Check if we're playing on Kaname
-	and emu.read(0xFEFF, emu.memType.cpu) == 0xEA and emu.read(0xFF0B, emu.memType.cpu) == 0x4C
-	and emu.read(0xFF0D, emu.memType.cpu) == 0x84 and emu.read(0xFF0E, emu.memType.cpu) == 0x4C
-	and emu.read(0xFF10, emu.memType.cpu) == 0x80 and emu.read(0xFF1F, emu.memType.cpu) == 0x20 then
-		if emu.read(0xFF0C, emu.memType.cpu) == 0x9F and emu.read(0xFF0F, emu.memType.cpu) == 0x57
-		and emu.read(0xFF20, emu.memType.cpu) == 0xEE and emu.read(0xFF21, emu.memType.cpu) == 0xBB
-		or emu.read(0xFF0C, emu.memType.cpu) == 0x87 and emu.read(0xFF0F, emu.memType.cpu) == 0xA1
-		and emu.read(0xFF20, emu.memType.cpu) == 0x2E and emu.read(0xFF21, emu.memType.cpu) == 0xAC
-		or emu.read(0xFF0C, emu.memType.cpu) == 0x87 and emu.read(0xFF0F, emu.memType.cpu) == 0xA1
-		and emu.read(0xFF20, emu.memType.cpu) == 0x4E and emu.read(0xFF21, emu.memType.cpu) == 0xB0 then
+	if emu.read(0xFEFD, emu.memType.nesMemory) == 0xEA and emu.read(0xFEFE, emu.memType.nesMemory) == 0xEA --Check if we're playing on Kaname
+	and emu.read(0xFEFF, emu.memType.nesMemory) == 0xEA and emu.read(0xFF0B, emu.memType.nesMemory) == 0x4C
+	and emu.read(0xFF0D, emu.memType.nesMemory) == 0x84 and emu.read(0xFF0E, emu.memType.nesMemory) == 0x4C
+	and emu.read(0xFF10, emu.memType.nesMemory) == 0x80 and emu.read(0xFF1F, emu.memType.nesMemory) == 0x20 then
+		if emu.read(0xFF0C, emu.memType.nesMemory) == 0x9F and emu.read(0xFF0F, emu.memType.nesMemory) == 0x57
+		and emu.read(0xFF20, emu.memType.nesMemory) == 0xEE and emu.read(0xFF21, emu.memType.nesMemory) == 0xBB
+		or emu.read(0xFF0C, emu.memType.nesMemory) == 0x87 and emu.read(0xFF0F, emu.memType.nesMemory) == 0xA1
+		and emu.read(0xFF20, emu.memType.nesMemory) == 0x2E and emu.read(0xFF21, emu.memType.nesMemory) == 0xAC
+		or emu.read(0xFF0C, emu.memType.nesMemory) == 0x87 and emu.read(0xFF0F, emu.memType.nesMemory) == 0xA1
+		and emu.read(0xFF20, emu.memType.nesMemory) == 0x4E and emu.read(0xFF21, emu.memType.nesMemory) == 0xB0 then
 			Kaname_time = "NTSC"
-		elseif emu.read(0xFF0C, emu.memType.cpu) == 0xA4 and emu.read(0xFF0F, emu.memType.cpu) == 0x65
-		and emu.read(0xFF20, emu.memType.cpu) == 0xEE and emu.read(0xFF21, emu.memType.cpu) == 0xBB then
+		elseif emu.read(0xFF0C, emu.memType.nesMemory) == 0xA4 and emu.read(0xFF0F, emu.memType.nesMemory) == 0x65
+		and emu.read(0xFF20, emu.memType.nesMemory) == 0xEE and emu.read(0xFF21, emu.memType.nesMemory) == 0xBB then
 			Kaname_time = "PAL"
 		else
 			Kaname_time = false
@@ -412,17 +412,17 @@ function display_time()
 	end
 	
 	if end_frame < 0 then --If there is no end frame, update the timer forever
-		if emu.getState().ppu.frameCount - start_frame < 0 then
-			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.getState().ppu.frameCount - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+		if emu.getState().frameCount - start_frame < 0 then
+			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.getState().frameCount - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
 		else
-			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.getState().ppu.frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		end
 	else --If there is an end frame, stop updating the timer when end frame has been reached
-		if emu.getState().ppu.frameCount <= end_frame then
-			if emu.getState().ppu.frameCount - start_frame < 0 then
-				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.getState().ppu.frameCount - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
+		if emu.getState().frameCount <= end_frame then
+			if emu.getState().frameCount - start_frame < 0 then
+				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * ((emu.getState().frameCount - start_frame) * -1) / (nes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
 			else
-				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.getState().ppu.frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 			end
 		else
 			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
@@ -435,13 +435,13 @@ function display_time()
 	milliseconds = math.floor((frames * 1000) % 1000)
 	
 	if negative_delay then --If negative delay, show negative time before timing starts
-		if emu.getState().ppu.frameCount - start_frame < 0 then
+		if emu.getState().frameCount - start_frame < 0 then
 			drawString(188, 232, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
 		else
 			drawString(193, 232, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
 		end
 	else --Otherwise, show 0 hours, 0 minutes, 0 seconds, and 0 milliseconds until timing starts
-		if emu.getState().ppu.frameCount - start_frame < 0 then
+		if emu.getState().frameCount - start_frame < 0 then
 			drawString(193, 232, "00:00:00.000", text_colour, text_back_colour) --draw 0 hours, 0 minutes, 0 seconds, and 0 milliseconds
 		else
 			drawString(193, 232, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
@@ -457,10 +457,10 @@ function display_information()
 	local y_counter = 1
 	
 	if toggle_display_21_framerule then
-		if emu.read(ram_IntervalTimerControl, emu.memType.cpu) < 10 then --Done to make the display look nice
-			drawString(173, y_counter, string.format("21 Framerule:  %d", emu.read(ram_IntervalTimerControl, emu.memType.cpu)), text_colour, text_back_colour)
+		if emu.read(ram_IntervalTimerControl, emu.memType.nesMemory) < 10 then --Done to make the display look nice
+			drawString(173, y_counter, string.format("21 Framerule:  %d", emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)), text_colour, text_back_colour)
 		else
-			drawString(173, y_counter, string.format("21 Framerule: %d", emu.read(ram_IntervalTimerControl, emu.memType.cpu)), text_colour, text_back_colour)
+			drawString(173, y_counter, string.format("21 Framerule: %d", emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)), text_colour, text_back_colour)
 		end
 	end
 	
@@ -473,7 +473,7 @@ function display_information()
 	end
 	
 	if toggle_display_mario_position then
-		drawString(1, y_counter, string.format("Pos: (%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position, emu.memType.cpu), emu.read(ram_SprObject_X_MoveForce, emu.memType.cpu) >> 4, emu.read(ram_SprObject_Y_Position, emu.memType.cpu), emu.read(ram_SprObject_YMF_Dummy, emu.memType.cpu)), text_colour, text_back_colour)
+		drawString(1, y_counter, string.format("Pos: (%02X.%X, %02X.%02X)", emu.read(ram_SprObject_X_Position, emu.memType.nesMemory), emu.read(ram_SprObject_X_MoveForce, emu.memType.nesMemory) >> 4, emu.read(ram_SprObject_Y_Position, emu.memType.nesMemory), emu.read(ram_SprObject_YMF_Dummy, emu.memType.nesMemory)), text_colour, text_back_colour)
 		y_counter = y_counter + 8
 	end
 	
@@ -481,14 +481,14 @@ function display_information()
 		--How this essentially works:
 		--• If X Speed is positive, display the normal X SubSpeed value. Otherwise, display the two's complement of the X SubSpeed value.
 		--• If Y Speed is positive, display the normal Y SubSpeed value. Otherwise, display the two's complement of the Y SubSpeed value.
-		if emu.read(ram_Player_X_Speed, emu.memType.cpu, 1) > -1 and emu.read(ram_Player_Y_Speed, emu.memType.cpu, 1) > -1 then
-			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.cpu), emu.read(ram_Player_X_MoveForce, emu.memType.cpu), emu.read(ram_Player_Y_Speed, emu.memType.cpu), emu.read(ram_Player_Y_MoveForce, emu.memType.cpu)), text_colour, text_back_colour)
-		elseif emu.read(ram_Player_X_Speed, emu.memType.cpu, 1) > -1 and emu.read(ram_Player_Y_Speed, emu.memType.cpu, 1) < 0 then
-			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.cpu), emu.read(ram_Player_X_MoveForce, emu.memType.cpu), emu.read(ram_Player_Y_Speed, emu.memType.cpu, 1), (256 - emu.read(ram_Player_Y_MoveForce, emu.memType.cpu)) & 0xFF), text_colour, text_back_colour)
-		elseif emu.read(ram_Player_X_Speed, emu.memType.cpu, 1) < 0 and emu.read(ram_Player_Y_Speed, emu.memType.cpu, 1) > -1 then
-			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.cpu, 1), (256 - emu.read(ram_Player_X_MoveForce, emu.memType.cpu)) & 0xFF, emu.read(ram_Player_Y_Speed, emu.memType.cpu), emu.read(ram_Player_Y_MoveForce, emu.memType.cpu)), text_colour, text_back_colour)
+		if emu.read(ram_Player_X_Speed, emu.memType.nesMemory, 1) > -1 and emu.read(ram_Player_Y_Speed, emu.memType.nesMemory, 1) > -1 then
+			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.nesMemory), emu.read(ram_Player_X_MoveForce, emu.memType.nesMemory), emu.read(ram_Player_Y_Speed, emu.memType.nesMemory), emu.read(ram_Player_Y_MoveForce, emu.memType.nesMemory)), text_colour, text_back_colour)
+		elseif emu.read(ram_Player_X_Speed, emu.memType.nesMemory, 1) > -1 and emu.read(ram_Player_Y_Speed, emu.memType.nesMemory, 1) < 0 then
+			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.nesMemory), emu.read(ram_Player_X_MoveForce, emu.memType.nesMemory), emu.read(ram_Player_Y_Speed, emu.memType.nesMemory, 1), (256 - emu.read(ram_Player_Y_MoveForce, emu.memType.nesMemory)) & 0xFF), text_colour, text_back_colour)
+		elseif emu.read(ram_Player_X_Speed, emu.memType.nesMemory, 1) < 0 and emu.read(ram_Player_Y_Speed, emu.memType.nesMemory, 1) > -1 then
+			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.nesMemory, 1), (256 - emu.read(ram_Player_X_MoveForce, emu.memType.nesMemory)) & 0xFF, emu.read(ram_Player_Y_Speed, emu.memType.nesMemory), emu.read(ram_Player_Y_MoveForce, emu.memType.nesMemory)), text_colour, text_back_colour)
 		else
-			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.cpu, 1), (256 - emu.read(ram_Player_X_MoveForce, emu.memType.cpu)) & 0xFF, emu.read(ram_Player_Y_Speed, emu.memType.cpu, 1), (256 - emu.read(ram_Player_Y_MoveForce, emu.memType.cpu)) & 0xFF), text_colour, text_back_colour)
+			drawString(1, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", emu.read(ram_Player_X_Speed, emu.memType.nesMemory, 1), (256 - emu.read(ram_Player_X_MoveForce, emu.memType.nesMemory)) & 0xFF, emu.read(ram_Player_Y_Speed, emu.memType.nesMemory, 1), (256 - emu.read(ram_Player_Y_MoveForce, emu.memType.nesMemory)) & 0xFF), text_colour, text_back_colour)
 		end
 		y_counter = y_counter + 8
 	end
@@ -496,12 +496,12 @@ function display_information()
 	if toggle_display_mario_velocity_adder then
 		emu.drawRectangle(0, y_counter - 1, 95, 9, text_back_colour, 1)
 		emu.drawString(1, y_counter, "Speed", text_colour, 0xFF000000) --Display "Speed"
-		drawString(1, y_counter + 8, string.format("Adder: (%d.%02X, 0.%02X)", emu.read(ram_FrictionAdderLow - 1, emu.memType.cpu), emu.read(ram_FrictionAdderLow, emu.memType.cpu), emu.read(ram_VerticalForce, emu.memType.cpu)), text_colour, text_back_colour) --Display "Adder:" and SpeedAdder
+		drawString(1, y_counter + 8, string.format("Adder: (%d.%02X, 0.%02X)", emu.read(ram_FrictionAdderLow - 1, emu.memType.nesMemory), emu.read(ram_FrictionAdderLow, emu.memType.nesMemory), emu.read(ram_VerticalForce, emu.memType.nesMemory)), text_colour, text_back_colour) --Display "Adder:" and SpeedAdder
 		y_counter = y_counter + 16
 	end
 	
 	if toggle_display_state then
-		drawString(1, y_counter, string.format("State?: %d", emu.read(ram_Player_State, emu.memType.cpu)), text_colour, text_back_colour)
+		drawString(1, y_counter, string.format("State?: %d", emu.read(ram_Player_State, emu.memType.nesMemory)), text_colour, text_back_colour)
 	end
 end
 

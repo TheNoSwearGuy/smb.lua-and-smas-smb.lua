@@ -1,31 +1,31 @@
---This lua script is supposed to be identical to the smb3.lua script (https://github.com/fortenbt/smb3-lua) but for SMAS: SMB and for BizHawk
---Thank you to @Simplistic for helping me fix the Frame counter display :)
---Note: The "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
+--Thank you to @Simplistic for helping me fix the Frame counter display
+--Note: the "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
 --the right framerate. If you set this variable to a non-valid value, this will make the timer default to you not playing on PAL.
 local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
 
 --toggle features, change to false if you don't want them
-local toggle_display_pellsson                       = true --Not a part of the smb3.lua script, but I thought having this would be useful
+local toggle_display_practice_information           = true
 local toggle_display_sprite_hitboxes                = true
 local toggle_display_mario_hitbox                   = true
+local toggle_display_hitbox_collision_check         = false
 local toggle_display_sprite_slot_above_sprite       = true
 local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
 local toggle_display_time                           = true
-local toggle_display_21_framerule                   = true --Not a part of the smb3.lua script, but I thought it would be nice to have this
+local toggle_display_21_framerule                   = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
-local toggle_display_mario_velocity_adder           = true --Not a part of the smb3.lua script
-local toggle_display_state                          = true --Essentially the same as Player_InAir ($D8) from SMB3
+local toggle_display_mario_velocity_adder           = true
+local toggle_display_state                          = true
 
 --variables
 local text_colour             = "white"
 local text_faded_colour       = "#80FFFFFF"
 local text_back_colour        = "#66000000"
 local text_faded_back_colour  = "#33000000"
-local hitbox_edge_colour_on   = "#00FF00" --Hitbox back and edge colour for when collisions are being checked
+local hitbox_edge_colour_on   = "#00FF00" --Hitbox back and edge colour for when collisions are being checked (always used when not showing hitbox collision check)
 local hitbox_back_colour_on   = "#8000FF00"
 local hitbox_edge_colour_off  = "#00FF00" --Hitbox back and edge colour for when collisions are not being checked
 local hitbox_back_colour_off  = "clear"
@@ -37,9 +37,9 @@ local negative_delay = true --'true' for negative delay, 'false' for the timer t
 local start_frame    = 0 --0 for TAS timing
 local end_frame      = -1 --Set to -1 for no end frame
 
---Pellsson settings:
-local XOrg = 0x3AD
-local YOrg = 0x705
+--Kaname settings:
+local User_Var_A = 0x3AD
+local User_Var_B = 0x705
 
 --all of the wram addresses I need
 local wram_FrameCounter          = 9
@@ -55,11 +55,11 @@ local wram_Player_Y_Speed        = 0xA0
 local wram_FloateyNum_Timer      = 0x138
 local wram_SprObject_X_Position  = 0x219
 local wram_SprObject_Y_Position  = 0x237
+local wram_BowserOrigXPos        = 0x366
 local wram_Player_Rel_XPos       = 0x3AD
 local wram_SprObject_X_MoveForce = 0x401
 local wram_SprObject_YMF_Dummy   = 0x41C
 local wram_Player_Y_MoveForce    = 0x43C
-local wram_WarpZoneControl       = 0x6D6
 local wram_FrictionAdderLow      = 0x702
 local wram_Player_X_MoveForce    = 0x705
 local wram_VerticalForce         = 0x709
@@ -67,51 +67,55 @@ local wram_ScreenLeft_PageLoc    = 0x71A
 local wram_ScreenLeft_X_Pos      = 0x71C
 local wram_ScreenRoutineTask     = 0x73C
 local wram_StarFlagTaskControl   = 0x746
+local wram_AltEntranceControl    = 0x752
 local wram_LevelNumber           = 0x75C
 local wram_WorldNumber           = 0x75F
 local wram_OperMode              = 0x770
 local wram_OperMode_Task         = 0x772
+local wram_DisableScreenFlag     = 0x774
 local wram_IntervalTimerControl  = 0x787
 local wram_JumpSwimTimer         = 0x78A
 local wram_BoundingBox_UL_Corner = 0xF9C
 local wram_Sample7SoundQueue     = 0x1603
 
---Pellsson variables:
-local sock                    = 0
-BackwardsPole                 = 0
-Frame                         = 0
-FrameDisplay                  = -1
-OperMode_TaskDisplay          = -1
-ScreenEnterDisplay            = 0
-StarFlagTaskControlDisplay    = -1
-StarFlagTaskControlEndDisplay = -1
-XOrgDisplay                   = 0
-YOrgDisplay                   = 0
+--Practice information variables:
+local sock                 = 0
+local ypos                 = 0
+BackwardsPole              = false
+BowserFrame                = false
+DontDisplaySock            = false
+Frame                      = 0
+FrameDisplay               = -1
+OperMode_TaskDisplay       = -1
+ScreenEnterDisplay         = 0
+StarFlagTaskControlDisplay = -1
+User_Var_ADisplay          = 0
+User_Var_BDisplay          = 0
 
-function display_remainder(x) --Function to display the remainder and to compact the code to display Pellsson information
-	if StarFlagTaskControlDisplay == -1 then
-		Frame = memory.readbyte(wram_FrameCounter)
-		StarFlagTaskControlDisplay = (memory.readbyte(wram_IntervalTimerControl) + x) % 21
-	end
-	if StarFlagTaskControlDisplay < 10 then
-		gui.pixelText(0, 54, string.format("R:%d ", StarFlagTaskControlDisplay), text_colour, text_back_colour, "fceux")
-	else
-		gui.pixelText(0, 54, string.format("R:%d", StarFlagTaskControlDisplay), text_colour, text_back_colour, "fceux")
-	end
-end
-
-function display_pellsson() --Code to display Pellsson information
+function display_practice_information() --Code to display practice information
 	local sockvalue = (memory.readbyte(wram_SprObject_X_Position) << 8)
 		+ memory.readbyte(wram_SprObject_X_MoveForce)
 		+ ((0xFF - memory.readbyte(wram_SprObject_Y_Position) >> 2) * 0x280)
-	if memory.readbyte(wram_IntervalTimerControl) % 4 == 2 then
-		sock = sockvalue % 0x10000
+	if memory.readbyte(wram_IntervalTimerControl) & 3 == 2 then
+		sock = sockvalue & 0xFFF
+		ypos = memory.readbyte(wram_SprObject_Y_Position) & 3
+		DontDisplaySock = false
 	end
-	gui.pixelText(0, 0, string.format("S:%04X", sock), text_colour, text_back_colour, "fceux")
+	if memory.readbyte(wram_DisableScreenFlag) ~= 0 or memory.readbyte(wram_GameEngineSubroutine) == 0
+	or memory.readbyte(wram_ScreenRoutineTask) >= 7 and memory.readbyte(wram_ScreenRoutineTask) <= 9
+	or memory.readbyte(wram_AltEntranceControl) == 2 then
+		DontDisplaySock = true
+	end
+	if DontDisplaySock then
+		gui.pixelText(0, 0, "S:    ", text_colour, text_back_colour, "fceux")
+	else
+		gui.pixelText(0, 0, string.format("S: %03X", sock), text_colour, text_back_colour, "fceux")
+		gui.pixelText(12, 0, ypos, text_colour, "clear", "fceux")
+	end
 	
 	if memory.readbyte(wram_ScreenRoutineTask) == 4 then
 		local chars = "0123456789ABCDEFGHIJK"
-		Frame = memory.readbyte(wram_FrameCounter) - 1
+		Frame = memory.readbyte(wram_FrameCounter)
 		ScreenEnterDisplay = string.sub(chars, memory.readbyte(wram_IntervalTimerControl) + 1, memory.readbyte(wram_IntervalTimerControl) + 1)
 	end
 	gui.pixelText(0, 22, string.format(" :%s", ScreenEnterDisplay), text_colour, text_back_colour, "fceux")
@@ -125,9 +129,21 @@ function display_pellsson() --Code to display Pellsson information
 	gui.drawPixel(2, 28, text_colour)
 	gui.drawPixel(1, 29, text_colour)
 	
-	if (memory.readbyte(wram_OperMode) == 0 and memory.readbyte(wram_FrameCounter) % 2 == 0)
+	if memory.read_s8(wram_Enemy_Flag) > 0 and memory.readbyte(wram_Enemy_ID) == 0x2D
+	and memory.readbyte(wram_SprObject_X_Position + 1) == memory.readbyte(wram_BowserOrigXPos)
+	or memory.read_s8(wram_Enemy_Flag + 1) > 0 and memory.readbyte(wram_Enemy_ID + 1) == 0x2D
+	and memory.readbyte(wram_SprObject_X_Position + 2) == memory.readbyte(wram_BowserOrigXPos)
+	or memory.read_s8(wram_Enemy_Flag + 2) > 0 and memory.readbyte(wram_Enemy_ID + 2) == 0x2D
+	and memory.readbyte(wram_SprObject_X_Position + 3) == memory.readbyte(wram_BowserOrigXPos)
+	or memory.read_s8(wram_Enemy_Flag + 3) > 0 and memory.readbyte(wram_Enemy_ID + 3) == 0x2D
+	and memory.readbyte(wram_SprObject_X_Position + 4) == memory.readbyte(wram_BowserOrigXPos)
+	or memory.read_s8(wram_Enemy_Flag + 4) > 0 and memory.readbyte(wram_Enemy_ID + 4) == 0x2D
+	and memory.readbyte(wram_SprObject_X_Position + 5) == memory.readbyte(wram_BowserOrigXPos) then
+		BowserFrame = true
+	end
+	if (memory.readbyte(wram_OperMode) == 0 and memory.readbyte(wram_FrameCounter) & 1 == 0)
+	or memory.readbyte(wram_GameEngineSubroutine) == 7
 	or memory.readbyte(wram_JumpSwimTimer) == 0x20
-	or memory.readbyte(wram_Sample7SoundQueue ) == 1
 	or memory.readbyte(wram_FloateyNum_Timer) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 1) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 2) == 0x2A
@@ -138,16 +154,34 @@ function display_pellsson() --Code to display Pellsson information
 	or memory.readbyte(wram_FloateyNum_Timer + 7) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 8) == 0x2A
 	or memory.readbyte(wram_FloateyNum_Timer + 9) == 0x2A
-	or memory.readbyte(wram_GameEngineSubroutine) == 7
-	or memory.readbyte(wram_Sample7SoundQueue) == 7 and memory.readbyte(wram_OperMode) ~= 2 then
+	or memory.readbyte(wram_Sample7SoundQueue) == 6 then
+		BowserFrame = false
 		if FrameDisplay == -1 then
 			FrameDisplay = memory.readbyte(wram_FrameCounter)
 			Frame = memory.readbyte(wram_FrameCounter)
 		end
+	elseif BowserFrame then
+		if (memory.read_s8(wram_Enemy_Flag) > 0 and memory.readbyte(wram_Enemy_ID) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + 1) ~= memory.readbyte(wram_BowserOrigXPos)
+		or memory.read_s8(wram_Enemy_Flag + 1) > 0 and memory.readbyte(wram_Enemy_ID + 1) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + 2) ~= memory.readbyte(wram_BowserOrigXPos)
+		or memory.read_s8(wram_Enemy_Flag + 2) > 0 and memory.readbyte(wram_Enemy_ID + 2) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + 3) ~= memory.readbyte(wram_BowserOrigXPos)
+		or memory.read_s8(wram_Enemy_Flag + 3) > 0 and memory.readbyte(wram_Enemy_ID + 3) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + 4) ~= memory.readbyte(wram_BowserOrigXPos)
+		or memory.read_s8(wram_Enemy_Flag + 4) > 0 and memory.readbyte(wram_Enemy_ID + 4) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + 5) ~= memory.readbyte(wram_BowserOrigXPos))
+		and memory.readbyte(wram_FrameCounter) & 3 == 0 then
+			if FrameDisplay == -1 then
+				FrameDisplay = memory.readbyte(wram_FrameCounter)
+				Frame = memory.readbyte(wram_FrameCounter)
+			end
+			BowserFrame = false
+		end
 	else
 		FrameDisplay = -1
 	end
-	gui.pixelText(0, 30, string.format(" rame:%03d", Frame), text_colour, text_back_colour, "fceux")
+	gui.pixelText(0, 30, string.format(" :%03d", Frame), text_colour, text_back_colour, "fceux")
 	memory.usememorydomain("CGRAM")
 	if memory.readbyte(0xB) == 3 and memory.readbyte(0xA) == 0x5F then
 		gui.pixelText(0, 30, "F", "#FFD600", "clear", "fceux")
@@ -156,39 +190,27 @@ function display_pellsson() --Code to display Pellsson information
 	else
 		gui.pixelText(0, 30, "F", "#FFFFFF", "clear", "fceux")
 	end
-	
 	memory.usememorydomain("System Bus")
-	if memory.readbyte(wram_FrameCounter) % 2 == 0 then
-		XOrgDisplay = memory.readbyte(XOrg)
-		YOrgDisplay = memory.readbyte(YOrg)
-	end
-	gui.pixelText(0, 38, string.format("X:%03d", XOrgDisplay), text_colour, text_back_colour, "fceux")
 	
-	gui.pixelText(0, 46, string.format("Y:%03d", YOrgDisplay), text_colour, text_back_colour, "fceux")
+	User_Var_ADisplay = memory.readbyte(User_Var_A)
+	User_Var_BDisplay = memory.readbyte(User_Var_B)
 	
-	if memory.readbyte(wram_StarFlagTaskControl) == 4
-	or memory.readbyte(wram_StarFlagTaskControl) == 5
+	gui.pixelText(0, 38, string.format("A:%03d", User_Var_ADisplay), text_colour, text_back_colour, "fceux")
+	
+	gui.pixelText(0, 46, string.format("B:%03d", User_Var_BDisplay), text_colour, text_back_colour, "fceux")
+	
+	if memory.readbyte(wram_StarFlagTaskControl) >= 4
 	or memory.readbyte(wram_OperMode) == 2
-	or memory.readbyte(wram_GameEngineSubroutine) == 2 then
-		display_remainder(0)
-	elseif memory.readbyte(wram_GameEngineSubroutine) == 3 then
-		if memory.readbyte(wram_WarpZoneControl) ~= 0 then
-			display_remainder(8)
-		else
-			display_remainder(0)
+	or memory.readbyte(wram_GameEngineSubroutine) == 2
+	or memory.readbyte(wram_GameEngineSubroutine) == 3
+	or memory.readbyte(wram_ScreenRoutineTask) >= 7 and memory.readbyte(wram_ScreenRoutineTask) <= 9 and memory.readbyte(wram_DisableScreenFlag) == 0 then
+		if StarFlagTaskControlDisplay == -1 then
+			Frame = memory.readbyte(wram_FrameCounter)
+			StarFlagTaskControlDisplay = memory.readbyte(wram_IntervalTimerControl)
 		end
+		gui.pixelText(0, 54, string.format("R:%02d", StarFlagTaskControlDisplay), text_colour, text_back_colour, "fceux")
 	else
 		StarFlagTaskControlDisplay = -1
-		gui.pixelText(0, 54, "R:  ", text_colour, text_back_colour, "fceux")
-	end
-	if memory.readbyte(wram_StarFlagTaskControl) == 5 then
-		if StarFlagTaskControlEndDisplay == -1 then
-			Frame = memory.readbyte(wram_FrameCounter)
-			StarFlagTaskControlEndDisplay = memory.readbyte(wram_IntervalTimerControl)
-			StarFlagTaskControlDisplay = StarFlagTaskControlEndDisplay
-		end
-	else
-		StarFlagTaskControlEndDisplay = -1
 	end
 	if memory.readbyte(wram_OperMode_Task) == 6 then
 		if OperMode_TaskDisplay == -1 then
@@ -200,141 +222,53 @@ function display_pellsson() --Code to display Pellsson information
 		OperMode_TaskDisplay = -1
 	end
 	
-	if memory.readbyte(wram_Player_Rel_XPos) > 0x70 then
-		xpos = memory.readbyte(wram_Player_Rel_XPos) - 0x70
-	else
-		xpos = 0
+	--Predefined left-edge positions for each world and level
+	local ScreenLeft = {
+		{0xE6, 0xE7, 0x05},
+		{0x10, 0xE7, 0x98},
+		{0x08, 0x96, 0xF7},
+		{0x98, 0xE7, 0xB6},
+		{0xF6, 0x08, 0x05},
+		{0x27, 0x07, 0xF6},
+		{0xB6, 0xE7, 0x98},
+		{0x07, 0x07, 0xE6}
+	}
+	
+	--Compute relative X position of player
+	local RelX = memory.readbyte(wram_Player_Rel_XPos)
+	local xpos = (RelX > 0x70) and (RelX - 0x70) or 0
+	
+	--Read current world and level
+	local world = memory.readbyte(wram_WorldNumber)
+	local level = memory.readbyte(wram_LevelNumber)
+	
+	--Check if we have a predefined screen left for this world and level
+	if ScreenLeft[world + 1] and ScreenLeft[world + 1][level + 1]
+	and not (memory.readbyte(wram_GameEngineSubroutine) == 4 or memory.readbyte(wram_GameEngineSubroutine) == 5) then
+		local LeftEdge = ScreenLeft[world + 1][level + 1]
+		local PowerupX = memory.readbyte(wram_SprObject_X_Position + 10)
+		
+		--Compute 8-bit difference (wraps around 0–255 automatically)
+		local diff = (PowerupX - (LeftEdge - xpos)) % 0x100
+		
+		--Backwards pole if difference >= 128 (0x80)
+		BackwardsPole = diff >= 0x80
 	end
-	if (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xE6 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 1) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xE7 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 0 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 2) then
-		if xpos > 5 then
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos + 0x100) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		else
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (5 - xpos) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		end
-	elseif memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 0 then
-		if xpos > 0x10 then
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos + 0x100) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		else
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x10 - xpos) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 1 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x98 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 2) then
-		if xpos > 8 then
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos + 0x100) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		else
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (8 - xpos) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		end
-	elseif memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 1 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x96 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif memory.readbyte(wram_WorldNumber) == 2 and memory.readbyte(wram_LevelNumber) == 2 then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xF7 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 3 and memory.readbyte(wram_LevelNumber) == 2) or (memory.readbyte(wram_WorldNumber) == 6 and memory.readbyte(wram_LevelNumber) == 0) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xB6 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 4 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 2) then
-		if (memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0xF6 - xpos) >= 0x80 then
-			BackwardsPole = true
-		else
-			BackwardsPole = false
-		end
-	elseif memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 0 then
-		if xpos > 0x27 then
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos + 0x100) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		else
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (0x27 - xpos) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		end
-	elseif (memory.readbyte(wram_WorldNumber) == 5 and memory.readbyte(wram_LevelNumber) == 1) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 0) or (memory.readbyte(wram_WorldNumber) == 7 and memory.readbyte(wram_LevelNumber) == 1) then
-		if xpos > 7 then
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos + 0x100) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		else
-			if (memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) >= -128 and memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) <= -1) or memory.readbyte(wram_SprObject_X_Position + 10) - (7 - xpos) >= 0x80 then
-				BackwardsPole = true
-			else
-				BackwardsPole = false
-			end
-		end
-	end
+	
+	--Display the result
 	gui.pixelText(0, 62, "Backwards ", text_colour, text_back_colour, "fceux")
-	if BackwardsPole then
-		gui.pixelText(0, 70, "Pole?: Yes", text_colour, text_back_colour, "fceux")
-	else
-		gui.pixelText(0, 70, "Pole?: No ", text_colour, text_back_colour, "fceux")
-	end
+	gui.pixelText(0, 70, "Pole?: "..(BackwardsPole and "Yes" or "No "), text_colour, text_back_colour, "fceux")
 end
 
 local function hitbox(x1, y1, x2, y2) --Function to draw the hitboxes
-	if memory.readbyte(wram_FrameCounter) % 2 == 0 then --If collisions are being checked, draw "on" colour
-		if y1 > y2 then
+	if memory.readbyte(wram_FrameCounter) & 1 == 0 or toggle_display_hitbox_collision_check == false then
+		if y1 > y2 then --If collisions are being checked or don't show hitbox collision check, draw "on" colour
 			gui.drawBox(x1, 0, x2, y2, hitbox_edge_colour_on, hitbox_back_colour_on)
 		else
 			gui.drawBox(x1, y1, x2, y2, hitbox_edge_colour_on, hitbox_back_colour_on)
 		end
-	else --Otherwise, draw "off" colour
-		if y1 > y2 then
+	else
+		if y1 > y2 then --Otherwise, draw "off" colour
 			gui.drawBox(x1, 0, x2, y2, hitbox_edge_colour_off, hitbox_back_colour_off)
 		else
 			gui.drawBox(x1, y1, x2, y2, hitbox_edge_colour_off, hitbox_back_colour_off)
@@ -475,11 +409,11 @@ function display_information()
 		if memory.read_s8(wram_Player_X_Speed) > -1 and memory.read_s8(wram_Player_Y_Speed) > -1 then
 			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.readbyte(wram_Player_X_Speed), memory.readbyte(wram_Player_X_MoveForce), memory.readbyte(wram_Player_Y_Speed), memory.readbyte(wram_Player_Y_MoveForce)), text_colour, text_back_colour, "fceux")
 		elseif memory.read_s8(wram_Player_X_Speed) > -1 and memory.read_s8(wram_Player_Y_Speed) < 0 then
-			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.readbyte(wram_Player_X_Speed), memory.readbyte(wram_Player_X_MoveForce), memory.read_s8(wram_Player_Y_Speed), (256 - memory.readbyte(wram_Player_Y_MoveForce)) % 256), text_colour, text_back_colour, "fceux")
+			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.readbyte(wram_Player_X_Speed), memory.readbyte(wram_Player_X_MoveForce), memory.read_s8(wram_Player_Y_Speed), (256 - memory.readbyte(wram_Player_Y_MoveForce)) & 0xFF), text_colour, text_back_colour, "fceux")
 		elseif memory.read_s8(wram_Player_X_Speed) < 0 and memory.read_s8(wram_Player_Y_Speed) > -1 then
-			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.read_s8(wram_Player_X_Speed), (256 - memory.readbyte(wram_Player_X_MoveForce)) % 256, memory.readbyte(wram_Player_Y_Speed), memory.readbyte(wram_Player_Y_MoveForce)), text_colour, text_back_colour, "fceux")
+			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.read_s8(wram_Player_X_Speed), (256 - memory.readbyte(wram_Player_X_MoveForce)) & 0xFF, memory.readbyte(wram_Player_Y_Speed), memory.readbyte(wram_Player_Y_MoveForce)), text_colour, text_back_colour, "fceux")
 		else
-			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.read_s8(wram_Player_X_Speed), (256 - memory.readbyte(wram_Player_X_MoveForce)) % 256, memory.read_s8(wram_Player_Y_Speed), (256 - memory.readbyte(wram_Player_Y_MoveForce)) % 256), text_colour, text_back_colour, "fceux")
+			gui.pixelText(0, y_counter, string.format("Speed: (%d.%02X, %d.%02X)", memory.read_s8(wram_Player_X_Speed), (256 - memory.readbyte(wram_Player_X_MoveForce)) & 0xFF, memory.read_s8(wram_Player_Y_Speed), (256 - memory.readbyte(wram_Player_Y_MoveForce)) & 0xFF), text_colour, text_back_colour, "fceux")
 		end
 		y_counter = y_counter + 8
 	end
@@ -497,8 +431,8 @@ function display_information()
 end
 
 while true do
-	if toggle_display_pellsson then
-		display_pellsson()
+	if toggle_display_practice_information then
+		display_practice_information()
 	end
 	
 	if toggle_display_sprite_hitboxes then
