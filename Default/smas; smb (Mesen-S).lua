@@ -1,4 +1,4 @@
-﻿--Thank you to @Simplistic for helping me fix the Frame counter display
+﻿--Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with the X subpixel string
 --Note: the "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
@@ -17,7 +17,7 @@ local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
-local toggle_display_mario_velocity_adder           = true
+local toggle_display_mario_acceleration             = true
 local toggle_display_state                          = true
 
 --variables
@@ -33,9 +33,13 @@ local sprite_slot_text_colour = 0xFFFFFF
 local sprite_slot_back_colour = 0x99000000
 
 --Timer settings:
-local negative_delay = true --'true' for negative delay, 'false' for the timer to say "00:00:00.000" until timing starts
-local start_frame    = 0 --0 for TAS timing
-local end_frame      = -1 --Set to -1 for no end frame
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 7}
+}
+local timer_reset = {
+	{0x6C9, 2},
+}
 
 --Kaname settings:
 local User_Var_A = 0x3AD
@@ -43,6 +47,7 @@ local User_Var_B = 0x705
 
 --all of the wram addresses I need
 local wram_FrameCounter          = 9
+local wram_A_B_Buttons           = 0xA
 local wram_GameEngineSubroutine  = 0xF
 local wram_Enemy_Flag            = 0x10
 local wram_Enemy_ID              = 0x1C
@@ -60,9 +65,11 @@ local wram_Player_Rel_XPos       = 0x3AD
 local wram_SprObject_X_MoveForce = 0x401
 local wram_SprObject_YMF_Dummy   = 0x41C
 local wram_Player_Y_MoveForce    = 0x43C
+local wram_WarpZoneControl       = 0x6D6
 local wram_FrictionAdderLow      = 0x702
 local wram_Player_X_MoveForce    = 0x705
 local wram_VerticalForce         = 0x709
+local wram_JumpspringAnimCtrl    = 0x70E
 local wram_ScreenLeft_PageLoc    = 0x71A
 local wram_ScreenLeft_X_Pos      = 0x71C
 local wram_ScreenRoutineTask     = 0x73C
@@ -79,17 +86,28 @@ local wram_BoundingBox_UL_Corner = 0xF9C
 local wram_Sample7SoundQueue     = 0x1603
 
 --Practice information variables:
-local sock                 = 0
-BackwardsPole              = false
-BowserFrame                = false
-DontDisplaySock            = false
-Frame                      = 0
-FrameDisplay               = -1
-OperMode_TaskDisplay       = -1
-ScreenEnterDisplay         = 0
-StarFlagTaskControlDisplay = -1
-User_Var_ADisplay          = 0
-User_Var_BDisplay          = 0
+local sock            = 0
+local xstring         = 0
+local xstringactual   = 0
+local ypos            = 0
+BackwardsPole         = false
+BowserFrame           = false
+DontDisplaySock       = false
+Frame                 = 0
+FrameDisplay          = -1
+FrameDisplay2         = -1
+FrameDisplay3         = -1
+PreviousA_B_Buttons   = 0
+RemainderDisplay      = -1
+RemainderDisplay2     = -1
+ScreenEnterDisplay    = 0
+WZ_or_Title_Remainder = false
+
+--Timer variables:
+start_frame   = -1
+start_reached = false
+end_frame     = -1
+end_reached   = false
 
 function drawString(x, y, text, text_colour, text_back_colour)
 	emu.drawLine(x - 1, y - 1, x - 1, y + 7, text_back_colour)
@@ -97,11 +115,24 @@ function drawString(x, y, text, text_colour, text_back_colour)
 end
 
 function display_practice_information() --Code to display practice information
+	if emu.read(wram_Player_X_Speed, emu.memType.cpu) < 0x19 or emu.read(wram_Player_X_Speed, emu.memType.cpu) > 0xE7 then
+		y = 24
+	else
+		y = 40
+	end
+	local xstringvalue = (((emu.read(wram_SprObject_PageLoc, emu.memType.cpu) << 12)
+		+ (emu.read(wram_SprObject_X_Position, emu.memType.cpu) << 4)
+		+ (emu.read(wram_SprObject_X_MoveForce, emu.memType.cpu) >> 4)) % y) >> 3
 	local sockvalue = (emu.read(wram_SprObject_X_Position, emu.memType.cpu) << 8)
 		+ emu.read(wram_SprObject_X_MoveForce, emu.memType.cpu)
 		+ ((0xFF - emu.read(wram_SprObject_Y_Position, emu.memType.cpu) >> 2) * 0x280)
+	if emu.read(wram_IntervalTimerControl, emu.memType.cpu) & 3 == 3 then
+		xstringactual = xstringvalue
+	end
 	if emu.read(wram_IntervalTimerControl, emu.memType.cpu) & 3 == 2 then
-		sock = (sockvalue & 0xFFF) + (emu.read(wram_SprObject_Y_Position, emu.memType.cpu) & 3) * 0x1000
+		xstring = xstringactual
+		sock = sockvalue & 0xFFF
+		ypos = emu.read(wram_SprObject_Y_Position, emu.memType.cpu) & 3
 		DontDisplaySock = false
 	end
 	if emu.read(wram_DisableScreenFlag, emu.memType.cpu) ~= 0 or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 0
@@ -110,9 +141,10 @@ function display_practice_information() --Code to display practice information
 		DontDisplaySock = true
 	end
 	if DontDisplaySock then
-		drawString(1, 8, "S:    ", text_colour, text_back_colour)
+		drawString(1, 16, "S:0000-0", text_back_colour, text_back_colour)
+		emu.drawString(1, 16, "S:", text_colour, 0xFF000000)
 	else
-		drawString(1, 8, string.format("S:%04X", sock), text_colour, text_back_colour)
+		drawString(1, 16, string.format("S:%d%03X-%d", xstring, sock, ypos), text_colour, text_back_colour)
 	end
 	
 	if emu.read(wram_ScreenRoutineTask, emu.memType.cpu) == 4 then
@@ -120,106 +152,111 @@ function display_practice_information() --Code to display practice information
 		Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
 		ScreenEnterDisplay = string.sub(chars, emu.read(wram_IntervalTimerControl, emu.memType.cpu) + 1, emu.read(wram_IntervalTimerControl, emu.memType.cpu) + 1)
 	end
-	drawString(1, 30, string.format(" :%s", ScreenEnterDisplay), text_colour, text_back_colour)
-	emu.drawPixel(1, 32, text_colour)
-	emu.drawPixel(2, 33, text_colour)
-	emu.drawPixel(3, 34, text_colour)
-	emu.drawPixel(4, 35, text_colour)
-	emu.drawPixel(5, 36, text_colour)
-	emu.drawPixel(5, 32, text_colour)
-	emu.drawPixel(4, 33, text_colour)
-	emu.drawPixel(2, 35, text_colour)
-	emu.drawPixel(1, 36, text_colour)
+	drawString(34, 8, string.format("-%s", ScreenEnterDisplay), text_colour, text_back_colour)
 	
-	if emu.read(wram_Enemy_Flag, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID, emu.memType.cpu) == 0x2D
-	and emu.read(wram_SprObject_X_Position + 1, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(wram_Enemy_Flag + 1, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 1, emu.memType.cpu) == 0x2D
-	and emu.read(wram_SprObject_X_Position + 2, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(wram_Enemy_Flag + 2, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 2, emu.memType.cpu) == 0x2D
-	and emu.read(wram_SprObject_X_Position + 3, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(wram_Enemy_Flag + 3, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 3, emu.memType.cpu) == 0x2D
-	and emu.read(wram_SprObject_X_Position + 4, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-	or emu.read(wram_Enemy_Flag + 4, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 4, emu.memType.cpu) == 0x2D
-	and emu.read(wram_SprObject_X_Position + 5, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu) then
-		BowserFrame = true
+	for i = 0, 8, 1 do
+		if emu.read(wram_Enemy_Flag + i, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + i, emu.memType.cpu) == 0x2D
+		and emu.read(wram_SprObject_X_Position + i + 1, emu.memType.cpu) == emu.read(wram_BowserOrigXPos, emu.memType.cpu) then
+			BowserFrame = true
+			break
+		end
+	end
+	local EnemyFrame = false
+	for j = 0, 9, 1 do
+		if emu.read(wram_FloateyNum_Timer + j, emu.memType.cpu) == 0x2A then
+			EnemyFrame = true
+			break
+		end
 	end
 	if (emu.read(wram_OperMode, emu.memType.cpu) == 0 and emu.read(wram_FrameCounter, emu.memType.cpu) & 1 == 0)
 	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 7
-	or emu.read(wram_JumpSwimTimer, emu.memType.cpu) == 0x20
-	or emu.read(wram_FloateyNum_Timer, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 1, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 2, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 3, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 4, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 5, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 6, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 7, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 8, emu.memType.cpu) == 0x2A
-	or emu.read(wram_FloateyNum_Timer + 9, emu.memType.cpu) == 0x2A
-	or emu.read(wram_Sample7SoundQueue, emu.memType.cpu) == 6 then
+	or emu.read(wram_JumpSwimTimer, emu.memType.cpu) == 0x20 or EnemyFrame or emu.read(wram_Sample7SoundQueue, emu.memType.cpu) == 6
+	or (emu.read(wram_Player_State, emu.memType.cpu) == 3 and (emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 4
+	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 5 and emu.read(wram_SprObject_Y_Position, emu.memType.cpu) >= 0xA2))
+	or emu.read(wram_StarFlagTaskControl, emu.memType.cpu) == 2 then
 		BowserFrame = false
 		if FrameDisplay == -1 then
 			FrameDisplay = emu.read(wram_FrameCounter, emu.memType.cpu)
 			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
 		end
 	elseif BowserFrame then
-		if (emu.read(wram_Enemy_Flag, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID, emu.memType.cpu) == 0x2D
-		and emu.read(wram_SprObject_X_Position + 1, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(wram_Enemy_Flag + 1, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 1, emu.memType.cpu) == 0x2D
-		and emu.read(wram_SprObject_X_Position + 2, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(wram_Enemy_Flag + 2, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 2, emu.memType.cpu) == 0x2D
-		and emu.read(wram_SprObject_X_Position + 3, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(wram_Enemy_Flag + 3, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 3, emu.memType.cpu) == 0x2D
-		and emu.read(wram_SprObject_X_Position + 4, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
-		or emu.read(wram_Enemy_Flag + 4, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + 4, emu.memType.cpu) == 0x2D
-		and emu.read(wram_SprObject_X_Position + 5, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu))
-		and emu.read(wram_FrameCounter, emu.memType.cpu) & 3 == 0 then
-			if FrameDisplay == -1 then
-				FrameDisplay = emu.read(wram_FrameCounter, emu.memType.cpu)
-				Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
+		for k = 0, 8, 1 do
+			if emu.read(wram_Enemy_Flag + k, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + k, emu.memType.cpu) == 0x2D
+			and emu.read(wram_SprObject_X_Position + k + 1, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
+			and emu.read(wram_FrameCounter, emu.memType.cpu) & 3 == 0 then
+				if FrameDisplay == -1 then
+					FrameDisplay = emu.read(wram_FrameCounter, emu.memType.cpu)
+					Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
+				end
+				BowserFrame = false
+				break
 			end
-			BowserFrame = false
 		end
 	else
 		FrameDisplay = -1
 	end
-	drawString(1, 38, string.format(" :%03d", Frame), text_colour, text_back_colour)
-	if emu.read(0xB, emu.memType.cgram) == 3 and emu.read(0xA, emu.memType.cgram) == 0x5F then
-		drawString(1, 38, "F", 0xFFD600, 0xFF000000)
-	elseif emu.read(0xB, emu.memType.cgram) == 3 and emu.read(0xA, emu.memType.cgram) == 0xFF then
-		drawString(1, 38, "F", 0xFFFF00, 0xFF000000)
+	if emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 8 and emu.read(wram_Player_State, emu.memType.cpu) ~= 3
+	and emu.read(wram_JumpspringAnimCtrl, emu.memType.cpu) == 0
+	and emu.read(wram_A_B_Buttons, emu.memType.cpu) & 0x80 == 0x80 and PreviousA_B_Buttons & 0x80 == 0 then
+		BowserFrame = false
+		if FrameDisplay2 == -1 then
+			FrameDisplay2 = emu.read(wram_FrameCounter, emu.memType.cpu)
+			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
+		end
 	else
-		drawString(1, 38, "F", 0xFFFFFF, 0xFF000000)
+		FrameDisplay2 = -1
+	end
+	if emu.read(wram_JumpspringAnimCtrl, emu.memType.cpu) - 1 >= 1
+	and emu.read(wram_A_B_Buttons, emu.memType.cpu) & 0x80 == 0x80 and PreviousA_B_Buttons & 0x80 == 0 then
+		BowserFrame = false
+		if FrameDisplay3 == -1 then
+			FrameDisplay3 = emu.read(wram_FrameCounter, emu.memType.cpu)
+			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
+		end
+	else
+		FrameDisplay3 = -1
+	end
+	PreviousA_B_Buttons = emu.read(wram_A_B_Buttons, emu.memType.cpu)
+	drawString(1, 24, string.format(" :%03d", Frame), text_colour, text_back_colour)
+	if emu.read(0xB, emu.memType.cgram) == 3 and emu.read(0xA, emu.memType.cgram) == 0x5F then
+		drawString(1, 24, "F", 0xFFD600, 0xFF000000)
+	elseif emu.read(0xB, emu.memType.cgram) == 3 and emu.read(0xA, emu.memType.cgram) == 0xFF then
+		drawString(1, 24, "F", 0xFFFF00, 0xFF000000)
+	else
+		drawString(1, 24, "F", 0xFFFFFF, 0xFF000000)
 	end
 	
-	User_Var_ADisplay = emu.read(User_Var_A, emu.memType.cpu)
-	User_Var_BDisplay = emu.read(User_Var_B, emu.memType.cpu)
+	drawString(1, 32, string.format("A:%03d", emu.read(User_Var_A, emu.memType.cpu)), text_colour, text_back_colour)
 	
-	drawString(1, 46, string.format("A:%03d", User_Var_ADisplay), text_colour, text_back_colour)
+	drawString(1, 40, string.format("B:%03d", emu.read(User_Var_B, emu.memType.cpu)), text_colour, text_back_colour)
 	
-	drawString(1, 54, string.format("B:%03d", User_Var_BDisplay), text_colour, text_back_colour)
-	
+	if emu.read(wram_WarpZoneControl, emu.memType.cpu) ~= 0 or emu.read(wram_OperMode, emu.memType.cpu) == 0 then
+		WZ_or_Title_Remainder = true
+	elseif emu.read(wram_ScreenRoutineTask, emu.memType.cpu) == 12 or emu.read(wram_ScreenRoutineTask, emu.memType.cpu) == 13 then
+		WZ_or_Title_Remainder = false
+	end
 	if emu.read(wram_StarFlagTaskControl, emu.memType.cpu) >= 4
 	or emu.read(wram_OperMode, emu.memType.cpu) == 2
 	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 2
 	or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 3
-	or emu.read(wram_ScreenRoutineTask, emu.memType.cpu) >= 7 and emu.read(wram_ScreenRoutineTask, emu.memType.cpu) <= 9 and emu.read(wram_DisableScreenFlag, emu.memType.cpu) == 0 then
-		if StarFlagTaskControlDisplay == -1 then
+	or emu.read(wram_ScreenRoutineTask, emu.memType.cpu) >= 7 and emu.read(wram_ScreenRoutineTask, emu.memType.cpu) <= 9
+	and emu.read(wram_DisableScreenFlag, emu.memType.cpu) == 0 and WZ_or_Title_Remainder then
+		if RemainderDisplay == -1 then
 			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
-			StarFlagTaskControlDisplay = emu.read(wram_IntervalTimerControl, emu.memType.cpu)
+			RemainderDisplay = emu.read(wram_IntervalTimerControl, emu.memType.cpu)
 		end
-		drawString(1, 62, string.format("R:%02d", StarFlagTaskControlDisplay), text_colour, text_back_colour)
+		drawString(1, 48, string.format("R:%02d", RemainderDisplay), text_colour, text_back_colour)
 	else
-		StarFlagTaskControlDisplay = -1
+		RemainderDisplay = -1
 	end
 	if emu.read(wram_OperMode_Task, emu.memType.cpu) == 6 then
-		if OperMode_TaskDisplay == -1 then
+		if RemainderDisplay2 == -1 then
 			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
-			OperMode_TaskDisplay = emu.read(wram_IntervalTimerControl, emu.memType.cpu)
-			StarFlagTaskControlDisplay = OperMode_TaskDisplay
+			RemainderDisplay2 = emu.read(wram_IntervalTimerControl, emu.memType.cpu)
+			RemainderDisplay = RemainderDisplay2
 		end
 	else
-		OperMode_TaskDisplay = -1
+		RemainderDisplay2 = -1
 	end
 	
 	--Predefined left-edge positions for each world and level
@@ -256,14 +293,14 @@ function display_practice_information() --Code to display practice information
 	end
 	
 	--Display the result
-	emu.drawRectangle(0, 69, 50, 9, text_back_colour, text_back_colour)
-	emu.drawString(1, 70, "Backwards", text_colour, 0xFF000000)
-	emu.drawRectangle(0, 77, 50, 9, text_back_colour, text_back_colour)
-	emu.drawString(1, 78, "Pole?: "..(BackwardsPole and "Yes" or "No"), text_colour, 0xFF000000)
+	emu.drawRectangle(0, 55, 50, 9, text_back_colour, text_back_colour)
+	emu.drawString(1, 56, "Backwards", text_colour, 0xFF000000)
+	emu.drawRectangle(0, 63, 50, 9, text_back_colour, text_back_colour)
+	emu.drawString(1, 64, "Pole?: "..(BackwardsPole and "Yes" or "No"), text_colour, 0xFF000000)
 end
 
 local function hitbox(x1, y1, x2, y2) --Function to draw the hitboxes
-	if emu.read(wram_FrameCounter, emu.memType.cpu) & 1 == 0 or toggle_display_hitbox_collision_check == false then
+	if emu.read(wram_FrameCounter, emu.memType.cpu) & 1 == 0 or not toggle_display_hitbox_collision_check then
 		if y1 > y2 then --If collisions are being checked or don't show hitbox collision check, draw "on" colour
 			emu.drawRectangle(x1, 7, x2 - x1 + 1, y2 + 1, hitbox_back_colour_on, 1, 1, 2)
 			emu.drawRectangle(x1, 7, x2 - x1 + 1, y2 + 1, hitbox_edge_colour_on, 0, 1, 2)
@@ -318,16 +355,16 @@ function display_sprite_slot_above_sprite()
 end
 
 function display_spriteslots()
-	local y_counter = 89 --for listing sprites and removing blank spriteslot's spaces
+	local y_counter = 75 --for listing sprites and removing blank spriteslot's spaces
 	for i = 1, 10, 1 do
 		if emu.read(wram_Enemy_Flag + i - 1, emu.memType.cpu) ~= (toggle_display_sprite_information_after_death and -1 or 0) then --if the sprite isn't dead, unless ..._after_death is set
 			if emu.read(wram_Enemy_Flag + i - 1, emu.memType.cpu) == 0 then --If dead, display faded text and background
 				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(wram_Enemy_ID + i - 1, emu.memType.cpu)), text_faded_colour, text_faded_back_colour) --display sprite slot number and sprite ID
-				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(wram_SprObject_X_Position + i, emu.memType.cpu), emu.read(wram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(wram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(wram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_faded_colour, text_faded_back_colour) --draw position
+				drawString(24, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(wram_SprObject_X_Position + i, emu.memType.cpu), emu.read(wram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(wram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(wram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_faded_colour, text_faded_back_colour) --draw position
 				y_counter = y_counter + 8 --add to y_counter so the next sprite is shown below the previous
 			else --Otherwise, display fully-bright text and background
 				drawString(1, y_counter, string.format("%d:%02X", i - 1, emu.read(wram_Enemy_ID + i - 1, emu.memType.cpu)), text_colour, text_back_colour) --display sprite slot number and sprite ID
-				emu.drawString(23, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(wram_SprObject_X_Position + i, emu.memType.cpu), emu.read(wram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(wram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(wram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_colour, text_back_colour) --draw position
+				drawString(24, y_counter, string.format("(%02X.%X, %02X.%02X)", emu.read(wram_SprObject_X_Position + i, emu.memType.cpu), emu.read(wram_SprObject_X_MoveForce + i, emu.memType.cpu) >> 4, emu.read(wram_SprObject_Y_Position + i, emu.memType.cpu), emu.read(wram_SprObject_YMF_Dummy + i, emu.memType.cpu)), text_colour, text_back_colour) --draw position
 				y_counter = y_counter + 8 --add to y_counter so the next sprite is shown below the previous
 			end
 		end
@@ -343,21 +380,56 @@ function display_time()
 		snes_framerate_denominator = 655171
 	end
 	
-	if end_frame < 0 then --If there is no end frame, update the timer forever
-		if emu.getState().ppu.frameCount - start_frame < 0 then
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.getState().ppu.frameCount - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
-		else
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+	if emu.read(0xFF4, emu.memType.cpu) & 0x10 == 0x10 then
+		start_reached = true
+	end
+	if not start_reached then
+		start_frame = emu.getState().ppu.frameCount + 103
+	end
+	
+	local all_match_end = true
+	
+	for _, row in ipairs(timer_end) do
+		if emu.read(row[1], emu.memType.cpu) ~= row[2] then
+			all_match_end = false
+			break
 		end
-	else --If there is an end frame, stop updating the timer when end frame has been reached
-		if emu.getState().ppu.frameCount <= end_frame then
-			if emu.getState().ppu.frameCount - start_frame < 0 then
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.getState().ppu.frameCount - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
-			else
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+	end
+	
+	if all_match_end and not end_reached then
+		end_frame = emu.getState().ppu.frameCount + 1
+		end_reached = true
+	end
+	
+	if #timer_reset > 0 then
+		local all_match_reset = true
+		
+		for _, row in ipairs(timer_reset) do
+			if emu.read(row[1], emu.memType.cpu) ~= row[2] then
+				all_match_reset = false
+				break
 			end
-		else
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+		end
+		
+		if all_match_reset then
+			start_frame = emu.getState().ppu.frameCount + 103
+			start_reached = false
+			end_frame = -1
+			end_reached = false
+		end
+	end
+	
+	if start_frame < 0 then
+		frames = 0
+	else
+		if end_frame < 0 then --If end frame has not been reached, keep running the timer
+			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+		else --Otherwise, stop the timer
+			if emu.getState().ppu.frameCount <= end_frame then
+				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			else
+				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+			end
 		end
 	end
 	
@@ -366,18 +438,10 @@ function display_time()
 	seconds = math.floor(frames % 60)
 	milliseconds = math.floor((frames * 1000) % 1000)
 	
-	if negative_delay then --If negative delay, show negative time before timing starts
-		if emu.getState().ppu.frameCount - start_frame < 0 then
-			drawString(188, 223, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
-		else
-			drawString(193, 223, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
-		end
-	else --Otherwise, show 0 hours, 0 minutes, 0 seconds, and 0 milliseconds until timing starts
-		if emu.getState().ppu.frameCount - start_frame < 0 then
-			drawString(193, 223, "00:00:00.000", text_colour, text_back_colour) --draw 0 hours, 0 minutes, 0 seconds, and 0 milliseconds
-		else
-			drawString(193, 223, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour) --draw it
-		end
+	if emu.getState().ppu.frameCount - start_frame < 0 then --draw it
+		drawString(188, 223, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
+	else
+		drawString(193, 223, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
 	end
 end
 
@@ -396,10 +460,10 @@ function display_information()
 		end
 	end
 	
-	y_counter = 172
+	y_counter = 158
 	
 	--display mario information
-	if toggle_display_mario_position or toggle_display_mario_velocity or toggle_display_mario_velocity_adder or toggle_display_state then
+	if toggle_display_mario_position or toggle_display_mario_velocity or toggle_display_mario_acceleration or toggle_display_state then
 		drawString(1, y_counter, "Mario:", text_colour, text_back_colour)
 		y_counter = y_counter + 8
 	end
@@ -425,11 +489,9 @@ function display_information()
 		y_counter = y_counter + 8
 	end
 	
-	if toggle_display_mario_velocity_adder then
-		emu.drawRectangle(0, y_counter - 1, 95, 9, text_back_colour, text_back_colour)
-		emu.drawString(1, y_counter, "Speed", text_colour, 0xFF000000) --Display "Speed"
-		drawString(1, y_counter + 8, string.format("Adder: (%d.%02X, 0.%02X)", emu.read(wram_FrictionAdderLow - 1, emu.memType.cpu), emu.read(wram_FrictionAdderLow, emu.memType.cpu), emu.read(wram_VerticalForce, emu.memType.cpu)), text_colour, text_back_colour) --Display "Adder:" and SpeedAdder
-		y_counter = y_counter + 16
+	if toggle_display_mario_acceleration then
+		drawString(1, y_counter, string.format("Acceleration: (%d.%02X, 0.%02X)", emu.read(wram_FrictionAdderLow - 1, emu.memType.cpu), emu.read(wram_FrictionAdderLow, emu.memType.cpu), emu.read(wram_VerticalForce, emu.memType.cpu)), text_colour, text_back_colour) --Display acceleration
+		y_counter = y_counter + 8
 	end
 	
 	if toggle_display_state then

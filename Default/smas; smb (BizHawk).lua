@@ -1,4 +1,4 @@
---Thank you to @Simplistic for helping me fix the Frame counter display
+--Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with the X subpixel string
 --Note: the "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
@@ -17,7 +17,7 @@ local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
-local toggle_display_mario_velocity_adder           = true
+local toggle_display_mario_acceleration             = true
 local toggle_display_state                          = true
 
 --variables
@@ -43,6 +43,7 @@ local User_Var_B = 0x705
 
 --all of the wram addresses I need
 local wram_FrameCounter          = 9
+local wram_A_B_Buttons           = 0xA
 local wram_GameEngineSubroutine  = 0xF
 local wram_Enemy_Flag            = 0x10
 local wram_Enemy_ID              = 0x1C
@@ -60,9 +61,11 @@ local wram_Player_Rel_XPos       = 0x3AD
 local wram_SprObject_X_MoveForce = 0x401
 local wram_SprObject_YMF_Dummy   = 0x41C
 local wram_Player_Y_MoveForce    = 0x43C
+local wram_WarpZoneControl       = 0x6D6
 local wram_FrictionAdderLow      = 0x702
 local wram_Player_X_MoveForce    = 0x705
 local wram_VerticalForce         = 0x709
+local wram_JumpspringAnimCtrl    = 0x70E
 local wram_ScreenLeft_PageLoc    = 0x71A
 local wram_ScreenLeft_X_Pos      = 0x71C
 local wram_ScreenRoutineTask     = 0x73C
@@ -79,24 +82,40 @@ local wram_BoundingBox_UL_Corner = 0xF9C
 local wram_Sample7SoundQueue     = 0x1603
 
 --Practice information variables:
-local sock                 = 0
-local ypos                 = 0
-BackwardsPole              = false
-BowserFrame                = false
-DontDisplaySock            = false
-Frame                      = 0
-FrameDisplay               = -1
-OperMode_TaskDisplay       = -1
-ScreenEnterDisplay         = 0
-StarFlagTaskControlDisplay = -1
-User_Var_ADisplay          = 0
-User_Var_BDisplay          = 0
+local sock            = 0
+local xstring         = 0
+local xstringactual   = 0
+local ypos            = 0
+BackwardsPole         = false
+BowserFrame           = false
+DontDisplaySock       = false
+Frame                 = 0
+FrameDisplay          = -1
+FrameDisplay2         = -1
+FrameDisplay3         = -1
+PreviousA_B_Buttons   = 0
+RemainderDisplay      = -1
+RemainderDisplay2     = -1
+ScreenEnterDisplay    = 0
+WZ_or_Title_Remainder = false
 
 function display_practice_information() --Code to display practice information
+	if memory.readbyte(wram_Player_X_Speed) < 0x19 or memory.readbyte(wram_Player_X_Speed) > 0xE7 then
+		y = 24
+	else
+		y = 40
+	end
+	local xstringvalue = (((memory.readbyte(wram_SprObject_PageLoc) << 12)
+		+ (memory.readbyte(wram_SprObject_X_Position) << 4)
+		+ (memory.readbyte(wram_SprObject_X_MoveForce) >> 4)) % y) >> 3
 	local sockvalue = (memory.readbyte(wram_SprObject_X_Position) << 8)
 		+ memory.readbyte(wram_SprObject_X_MoveForce)
 		+ ((0xFF - memory.readbyte(wram_SprObject_Y_Position) >> 2) * 0x280)
+	if memory.readbyte(wram_IntervalTimerControl) & 3 == 3 then
+		xstringactual = xstringvalue
+	end
 	if memory.readbyte(wram_IntervalTimerControl) & 3 == 2 then
+		xstring = xstringactual
 		sock = sockvalue & 0xFFF
 		ypos = memory.readbyte(wram_SprObject_Y_Position) & 3
 		DontDisplaySock = false
@@ -107,10 +126,9 @@ function display_practice_information() --Code to display practice information
 		DontDisplaySock = true
 	end
 	if DontDisplaySock then
-		gui.pixelText(0, 0, "S:    ", text_colour, text_back_colour, "fceux")
+		gui.pixelText(0, 8, "S:      ", text_colour, text_back_colour, "fceux")
 	else
-		gui.pixelText(0, 0, string.format("S: %03X", sock), text_colour, text_back_colour, "fceux")
-		gui.pixelText(12, 0, ypos, text_colour, "clear", "fceux")
+		gui.pixelText(0, 8, string.format("S:%d%03X-%d", xstring, sock, ypos), text_colour, text_back_colour, "fceux")
 	end
 	
 	if memory.readbyte(wram_ScreenRoutineTask) == 4 then
@@ -118,108 +136,113 @@ function display_practice_information() --Code to display practice information
 		Frame = memory.readbyte(wram_FrameCounter)
 		ScreenEnterDisplay = string.sub(chars, memory.readbyte(wram_IntervalTimerControl) + 1, memory.readbyte(wram_IntervalTimerControl) + 1)
 	end
-	gui.pixelText(0, 22, string.format(" :%s", ScreenEnterDisplay), text_colour, text_back_colour, "fceux")
-	gui.drawPixel(1, 25, text_colour)
-	gui.drawPixel(2, 26, text_colour)
-	gui.drawPixel(3, 27, text_colour)
-	gui.drawPixel(4, 28, text_colour)
-	gui.drawPixel(5, 29, text_colour)
-	gui.drawPixel(5, 25, text_colour)
-	gui.drawPixel(4, 26, text_colour)
-	gui.drawPixel(2, 28, text_colour)
-	gui.drawPixel(1, 29, text_colour)
+	gui.pixelText(36, 0, string.format("-%s", ScreenEnterDisplay), text_colour, text_back_colour, "fceux")
 	
-	if memory.read_s8(wram_Enemy_Flag) > 0 and memory.readbyte(wram_Enemy_ID) == 0x2D
-	and memory.readbyte(wram_SprObject_X_Position + 1) == memory.readbyte(wram_BowserOrigXPos)
-	or memory.read_s8(wram_Enemy_Flag + 1) > 0 and memory.readbyte(wram_Enemy_ID + 1) == 0x2D
-	and memory.readbyte(wram_SprObject_X_Position + 2) == memory.readbyte(wram_BowserOrigXPos)
-	or memory.read_s8(wram_Enemy_Flag + 2) > 0 and memory.readbyte(wram_Enemy_ID + 2) == 0x2D
-	and memory.readbyte(wram_SprObject_X_Position + 3) == memory.readbyte(wram_BowserOrigXPos)
-	or memory.read_s8(wram_Enemy_Flag + 3) > 0 and memory.readbyte(wram_Enemy_ID + 3) == 0x2D
-	and memory.readbyte(wram_SprObject_X_Position + 4) == memory.readbyte(wram_BowserOrigXPos)
-	or memory.read_s8(wram_Enemy_Flag + 4) > 0 and memory.readbyte(wram_Enemy_ID + 4) == 0x2D
-	and memory.readbyte(wram_SprObject_X_Position + 5) == memory.readbyte(wram_BowserOrigXPos) then
-		BowserFrame = true
+	for i = 0, 8, 1 do
+		if memory.read_s8(wram_Enemy_Flag + i) > 0 and memory.readbyte(wram_Enemy_ID + i) == 0x2D
+		and memory.readbyte(wram_SprObject_X_Position + i + 1) == memory.readbyte(wram_BowserOrigXPos) then
+			BowserFrame = true
+			break
+		end
+	end
+	local EnemyFrame = false
+	for j = 0, 9, 1 do
+		if memory.readbyte(wram_FloateyNum_Timer + j) == 0x2A then
+			EnemyFrame = true
+			break
+		end
 	end
 	if (memory.readbyte(wram_OperMode) == 0 and memory.readbyte(wram_FrameCounter) & 1 == 0)
 	or memory.readbyte(wram_GameEngineSubroutine) == 7
-	or memory.readbyte(wram_JumpSwimTimer) == 0x20
-	or memory.readbyte(wram_FloateyNum_Timer) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 1) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 2) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 3) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 4) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 5) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 6) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 7) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 8) == 0x2A
-	or memory.readbyte(wram_FloateyNum_Timer + 9) == 0x2A
-	or memory.readbyte(wram_Sample7SoundQueue) == 6 then
+	or memory.readbyte(wram_JumpSwimTimer) == 0x20 or EnemyFrame or memory.readbyte(wram_Sample7SoundQueue) == 6
+	or (memory.readbyte(wram_Player_State) == 3 and (memory.readbyte(wram_GameEngineSubroutine) == 4
+	or memory.readbyte(wram_GameEngineSubroutine) == 5 and memory.readbyte(wram_SprObject_Y_Position) >= 0xA2))
+	or memory.readbyte(wram_StarFlagTaskControl) == 2 then
 		BowserFrame = false
 		if FrameDisplay == -1 then
 			FrameDisplay = memory.readbyte(wram_FrameCounter)
 			Frame = memory.readbyte(wram_FrameCounter)
 		end
 	elseif BowserFrame then
-		if (memory.read_s8(wram_Enemy_Flag) > 0 and memory.readbyte(wram_Enemy_ID) == 0x2D
-		and memory.readbyte(wram_SprObject_X_Position + 1) ~= memory.readbyte(wram_BowserOrigXPos)
-		or memory.read_s8(wram_Enemy_Flag + 1) > 0 and memory.readbyte(wram_Enemy_ID + 1) == 0x2D
-		and memory.readbyte(wram_SprObject_X_Position + 2) ~= memory.readbyte(wram_BowserOrigXPos)
-		or memory.read_s8(wram_Enemy_Flag + 2) > 0 and memory.readbyte(wram_Enemy_ID + 2) == 0x2D
-		and memory.readbyte(wram_SprObject_X_Position + 3) ~= memory.readbyte(wram_BowserOrigXPos)
-		or memory.read_s8(wram_Enemy_Flag + 3) > 0 and memory.readbyte(wram_Enemy_ID + 3) == 0x2D
-		and memory.readbyte(wram_SprObject_X_Position + 4) ~= memory.readbyte(wram_BowserOrigXPos)
-		or memory.read_s8(wram_Enemy_Flag + 4) > 0 and memory.readbyte(wram_Enemy_ID + 4) == 0x2D
-		and memory.readbyte(wram_SprObject_X_Position + 5) ~= memory.readbyte(wram_BowserOrigXPos))
-		and memory.readbyte(wram_FrameCounter) & 3 == 0 then
-			if FrameDisplay == -1 then
-				FrameDisplay = memory.readbyte(wram_FrameCounter)
-				Frame = memory.readbyte(wram_FrameCounter)
+		for k = 0, 8, 1 do
+			if memory.read_s8(wram_Enemy_Flag + k) > 0 and memory.readbyte(wram_Enemy_ID + k) == 0x2D
+			and memory.readbyte(wram_SprObject_X_Position + k + 1) ~= memory.readbyte(wram_BowserOrigXPos)
+			and memory.readbyte(wram_FrameCounter) & 3 == 0 then
+				if FrameDisplay == -1 then
+					FrameDisplay = memory.readbyte(wram_FrameCounter)
+					Frame = memory.readbyte(wram_FrameCounter)
+				end
+				BowserFrame = false
+				break
 			end
-			BowserFrame = false
 		end
 	else
 		FrameDisplay = -1
 	end
-	gui.pixelText(0, 30, string.format(" :%03d", Frame), text_colour, text_back_colour, "fceux")
+	if memory.readbyte(wram_GameEngineSubroutine) == 8 and memory.readbyte(wram_Player_State) ~= 3
+	and memory.readbyte(wram_JumpspringAnimCtrl) == 0
+	and memory.readbyte(wram_A_B_Buttons) & 0x80 == 0x80 and PreviousA_B_Buttons & 0x80 == 0 then
+		BowserFrame = false
+		if FrameDisplay2 == -1 then
+			FrameDisplay2 = memory.readbyte(wram_FrameCounter)
+			Frame = memory.readbyte(wram_FrameCounter)
+		end
+	else
+		FrameDisplay2 = -1
+	end
+	if memory.readbyte(wram_JumpspringAnimCtrl) - 1 >= 1
+	and memory.readbyte(wram_A_B_Buttons) & 0x80 == 0x80 and PreviousA_B_Buttons & 0x80 == 0 then
+		BowserFrame = false
+		if FrameDisplay3 == -1 then
+			FrameDisplay3 = memory.readbyte(wram_FrameCounter)
+			Frame = memory.readbyte(wram_FrameCounter)
+		end
+	else
+		FrameDisplay3 = -1
+	end
+	PreviousA_B_Buttons = memory.readbyte(wram_A_B_Buttons)
+	gui.pixelText(0, 16, string.format(" :%03d", Frame), text_colour, text_back_colour, "fceux")
 	memory.usememorydomain("CGRAM")
 	if memory.readbyte(0xB) == 3 and memory.readbyte(0xA) == 0x5F then
-		gui.pixelText(0, 30, "F", "#FFD600", "clear", "fceux")
+		gui.pixelText(0, 16, "F", "#FFD600", "clear", "fceux")
 	elseif memory.readbyte(0xB) == 3 and memory.readbyte(0xA) == 0xFF then
-		gui.pixelText(0, 30, "F", "#FFFF00", "clear", "fceux")
+		gui.pixelText(0, 16, "F", "#FFFF00", "clear", "fceux")
 	else
-		gui.pixelText(0, 30, "F", "#FFFFFF", "clear", "fceux")
+		gui.pixelText(0, 16, "F", "#FFFFFF", "clear", "fceux")
 	end
 	memory.usememorydomain("System Bus")
 	
-	User_Var_ADisplay = memory.readbyte(User_Var_A)
-	User_Var_BDisplay = memory.readbyte(User_Var_B)
+	gui.pixelText(0, 24, string.format("A:%03d", memory.readbyte(User_Var_A)), text_colour, text_back_colour, "fceux")
 	
-	gui.pixelText(0, 38, string.format("A:%03d", User_Var_ADisplay), text_colour, text_back_colour, "fceux")
+	gui.pixelText(0, 32, string.format("B:%03d", memory.readbyte(User_Var_B)), text_colour, text_back_colour, "fceux")
 	
-	gui.pixelText(0, 46, string.format("B:%03d", User_Var_BDisplay), text_colour, text_back_colour, "fceux")
-	
+	if memory.readbyte(wram_WarpZoneControl) ~= 0 or memory.readbyte(wram_OperMode) == 0 then
+		WZ_or_Title_Remainder = true
+	elseif memory.readbyte(wram_ScreenRoutineTask) == 12 or memory.readbyte(wram_ScreenRoutineTask) == 13 then
+		WZ_or_Title_Remainder = false
+	end
 	if memory.readbyte(wram_StarFlagTaskControl) >= 4
 	or memory.readbyte(wram_OperMode) == 2
 	or memory.readbyte(wram_GameEngineSubroutine) == 2
 	or memory.readbyte(wram_GameEngineSubroutine) == 3
-	or memory.readbyte(wram_ScreenRoutineTask) >= 7 and memory.readbyte(wram_ScreenRoutineTask) <= 9 and memory.readbyte(wram_DisableScreenFlag) == 0 then
-		if StarFlagTaskControlDisplay == -1 then
+	or memory.readbyte(wram_ScreenRoutineTask) >= 7 and memory.readbyte(wram_ScreenRoutineTask) <= 9
+	and memory.readbyte(wram_DisableScreenFlag) == 0 and WZ_or_Title_Remainder then
+		if RemainderDisplay == -1 then
 			Frame = memory.readbyte(wram_FrameCounter)
-			StarFlagTaskControlDisplay = memory.readbyte(wram_IntervalTimerControl)
+			RemainderDisplay = memory.readbyte(wram_IntervalTimerControl)
 		end
-		gui.pixelText(0, 54, string.format("R:%02d", StarFlagTaskControlDisplay), text_colour, text_back_colour, "fceux")
+		gui.pixelText(0, 40, string.format("R:%02d", RemainderDisplay), text_colour, text_back_colour, "fceux")
 	else
-		StarFlagTaskControlDisplay = -1
+		RemainderDisplay = -1
 	end
 	if memory.readbyte(wram_OperMode_Task) == 6 then
-		if OperMode_TaskDisplay == -1 then
+		if RemainderDisplay2 == -1 then
 			Frame = memory.readbyte(wram_FrameCounter)
-			OperMode_TaskDisplay = memory.readbyte(wram_IntervalTimerControl)
-			StarFlagTaskControlDisplay = OperMode_TaskDisplay
+			RemainderDisplay2 = memory.readbyte(wram_IntervalTimerControl)
+			RemainderDisplay = RemainderDisplay2
 		end
 	else
-		OperMode_TaskDisplay = -1
+		RemainderDisplay2 = -1
 	end
 	
 	--Predefined left-edge positions for each world and level
@@ -256,12 +279,12 @@ function display_practice_information() --Code to display practice information
 	end
 	
 	--Display the result
-	gui.pixelText(0, 62, "Backwards ", text_colour, text_back_colour, "fceux")
-	gui.pixelText(0, 70, "Pole?: "..(BackwardsPole and "Yes" or "No "), text_colour, text_back_colour, "fceux")
+	gui.pixelText(0, 48, "Backwards ", text_colour, text_back_colour, "fceux")
+	gui.pixelText(0, 56, "Pole?: "..(BackwardsPole and "Yes" or "No "), text_colour, text_back_colour, "fceux")
 end
 
 local function hitbox(x1, y1, x2, y2) --Function to draw the hitboxes
-	if memory.readbyte(wram_FrameCounter) & 1 == 0 or toggle_display_hitbox_collision_check == false then
+	if memory.readbyte(wram_FrameCounter) & 1 == 0 or not toggle_display_hitbox_collision_check then
 		if y1 > y2 then --If collisions are being checked or don't show hitbox collision check, draw "on" colour
 			gui.drawBox(x1, 0, x2, y2, hitbox_edge_colour_on, hitbox_back_colour_on)
 		else
@@ -311,7 +334,7 @@ function display_sprite_slot_above_sprite()
 end
 
 function display_spriteslots()
-	local y_counter = 81 --for listing sprites and removing blank spriteslot's spaces
+	local y_counter = 67 --for listing sprites and removing blank spriteslot's spaces
 	for i = 1, 10, 1 do
 		if memory.readbyte(wram_Enemy_Flag + i - 1) ~= (toggle_display_sprite_information_after_death and -1 or 0) then --if the sprite isn't dead, unless ..._after_death is set
 			if memory.readbyte(wram_Enemy_Flag + i - 1) == 0 then --If dead, display faded text and background
@@ -336,19 +359,11 @@ function display_time()
 		snes_framerate_denominator = 655171
 	end
 	
-	if end_frame < 0 then --If there is no end frame, update the timer forever
-		if emu.framecount() - start_frame < 0 then
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
-		else
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
-		end
-	else --If there is an end frame, stop updating the timer when end frame has been reached
+	if end_frame < 0 then --If there is no end frame, run the timer forever
+		frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+	else --Otherwise, stop the timer when end frame has been reached
 		if emu.framecount() <= end_frame then
-			if emu.framecount() - start_frame < 0 then
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * ((emu.framecount() - start_frame) * -1) / (snes_framerate_numerator / 1000)) / 1000 --Absolute value of current frames in movie
-			else
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
-			end
+			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		else
 			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
 		end
@@ -389,10 +404,10 @@ function display_information()
 		end
 	end
 	
-	y_counter = 164
+	y_counter = 150
 	
 	--display mario information
-	if toggle_display_mario_position or toggle_display_mario_velocity or toggle_display_mario_velocity_adder or toggle_display_state then
+	if toggle_display_mario_position or toggle_display_mario_velocity or toggle_display_mario_acceleration or toggle_display_state then
 		gui.pixelText(0, y_counter, "Mario:", text_colour, text_back_colour, "fceux")
 		y_counter = y_counter + 8
 	end
@@ -418,11 +433,9 @@ function display_information()
 		y_counter = y_counter + 8
 	end
 	
-	if toggle_display_mario_velocity_adder then
-		gui.drawBox(0, y_counter, 114, y_counter + 17, text_back_colour, text_back_colour)
-		gui.pixelText(0, y_counter, "Speed", text_colour, "clear", "fceux") --Display "Speed"
-		gui.pixelText(0, y_counter + 8, string.format("Adder: (%d.%02X, 0.%02X)", memory.readbyte(wram_FrictionAdderLow - 1), memory.readbyte(wram_FrictionAdderLow), memory.readbyte(wram_VerticalForce)), text_colour, "clear", "fceux") --Display "Adder:" and SpeedAdder
-		y_counter = y_counter + 16
+	if toggle_display_mario_acceleration then
+		gui.pixelText(0, y_counter, string.format("Acceleration: (%d.%02X, 0.%02X)", memory.readbyte(wram_FrictionAdderLow - 1), memory.readbyte(wram_FrictionAdderLow), memory.readbyte(wram_VerticalForce)), text_colour, text_back_colour, "fceux") --Display acceleration
+		y_counter = y_counter + 8
 	end
 	
 	if toggle_display_state then
