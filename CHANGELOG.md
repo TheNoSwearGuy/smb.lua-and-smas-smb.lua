@@ -5,7 +5,7 @@
 - Fixed an error in the All-Stars scripts when updating the frame counter when Bowser loads
 - Fixed the black screen remainder to only display in warp zones and when starting the game from the title screen
 - Changed the name "SpeedAdder" to "Acceleration", and "XSA" and "YSA" to "XA" and "YA" respectively
-- Modified the timer on all the Mesen scripts to be configurable for starting, stopping, and resetting
+- Modified the timer on the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, and Mesen2RTA scripts to be configurable for starting, stopping, and resetting
 - Added a "Practice" folder for versions with only the practice information
 - Minor changes, optimizations, and fixes
 
