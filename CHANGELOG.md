@@ -1,4 +1,14 @@
 # Changelog
+## 2026-02-26
+- Updated the practice information to work the same as on Kaname 3.8
+- Compacted the frame counter code
+- Fixed an error in the All-Stars scripts when updating the frame counter when Bowser loads
+- Fixed the black screen remainder to only display in warp zones and when starting the game from the title screen
+- Changed the name "SpeedAdder" to "Acceleration", and "XSA" and "YSA" to "XA" and "YA" respectively
+- Modified the timer on all the Mesen scripts to be configurable for starting, stopping, and resetting
+- Added a "Practice" folder for versions with only the practice information
+- Minor changes, optimizations, and fixes
+
 ## 2025-11-18
 - Updated the practice information to work the same as on Kaname 3.6
 - All versions of Pellsson are no longer automatically detected and only Kaname is automatically detected for the NES scripts
