@@ -1,4 +1,4 @@
-If you're using the BizHawk versions or the FCEUX versions, ignore this. If you're using the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, Mesen2RTA versions, continue reading.
+If you're using the BizHawk versions or the FCEUX versions, ignore this. If you're using the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, or Mesen2RTA versions, continue reading.
 
 
 
@@ -119,4 +119,5 @@ local timer_end = {
 }
 local timer_reset = {
 	{0x6C9, 2},
+
 }
