@@ -1,0 +1,122 @@
+If you're using the BizHawk versions or the FCEUX versions, ignore this. If you're using the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, Mesen2RTA versions, continue reading.
+
+
+
+
+
+
+Timers for Super Mario Bros.
+Copy these to "Timer settings:" in the lua file with the conditions for the category you're playing.
+
+NES:
+Any% and Warpless (specific delay. For each framerule of delay, add 21 to the timer_delay value, and add two frames if on FDS):
+local timer_delay = 196
+local timer_start = {}
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 7}
+}
+local timer_reset = {}
+
+
+
+Minus World Ending (specific delay. For each framerule of delay, add 21 to the timer_delay value):
+local timer_delay = 198
+local timer_start = {}
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 35}
+}
+local timer_reset = {}
+
+
+
+Any%, Warpless, and Minus World Ending (any delay):
+local timer_delay = 1
+local timer_start = {
+	{0xE, 8},
+	{0x75F, 0},
+	{0x75C, 0},
+	{0x7F8, 4},
+	{0x7FA, 0}
+}
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 7}
+}
+local timer_reset = {
+	{0x770, 0},
+	{0x7FC, 0}
+}
+
+
+
+Minus World Ending (any delay):
+local timer_delay = 1
+local timer_start = {
+	{0xE, 8},
+	{0x75F, 0},
+	{0x75C, 0},
+	{0x7F8, 4},
+	{0x7FA, 0}
+}
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 35}
+}
+local timer_reset = {
+	{0x770, 0},
+	{0x7FC, 0}
+}
+
+
+
+8-4 IL:
+local timer_delay = 1
+local timer_start = {
+	{0xE, 8},
+	{0x75F, 7},
+	{0x75C, 3},
+	{0x7F8, 4},
+	{0x7FA, 0}
+}
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 7}
+}
+local timer_reset = {
+	{0xE, 0},
+	{0x752, 0}
+}
+
+
+
+1-1 as Fire Mario:
+local timer_delay = 1
+local timer_start = {
+	{0xE, 8},
+	{0x75F, 0},
+	{0x75C, 0},
+	{0x7F8, 4},
+	{0x7FA, 0}
+}
+local timer_end = {
+	{0xE, 4}
+}
+local timer_reset = {
+	{0x770, 0},
+	{0x7FC, 0}
+}
+
+
+
+
+SNES:
+Any% All-Stars and Warpless All-Stars:
+local timer_end = {
+	{0x770, 2},
+	{0x75F, 7}
+}
+local timer_reset = {
+	{0x6C9, 2},
+}
