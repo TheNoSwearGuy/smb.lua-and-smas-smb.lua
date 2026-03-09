@@ -4,8 +4,6 @@
 - Fixed a bug in the All-Stars scripts so pressing Start during the fade in between game select and the title screen doesn't start the timer
 - Fixes
 
-
-
 ## 2026-02-26
 - Updated the practice information to work the same as on Kaname 3.8
 - Compacted the frame counter code
@@ -15,8 +13,6 @@
 - Modified the timer on the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, and Mesen2RTA scripts to be configurable for starting, stopping, and resetting
 - Added a "Practice" folder for versions with only the practice information
 - Minor changes, optimizations, and fixes
-
-
 
 ## 2025-11-18
 - Updated the practice information to work the same as on Kaname 3.6
