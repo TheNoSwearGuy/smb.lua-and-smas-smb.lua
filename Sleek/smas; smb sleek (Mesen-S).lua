@@ -99,6 +99,7 @@ ScreenEnterDisplay    = 0
 WZ_or_Title_Remainder = false
 
 --Timer variables:
+start_pressed = false
 start_frame   = -1
 start_reached = false
 end_frame     = -1
@@ -373,6 +374,12 @@ function display_time()
 	end
 	
 	if emu.read(0xFF4, emu.memType.cpu) & 0x10 == 0x10 then
+		start_pressed = true
+	end
+	if emu.read(0xFF4, emu.memType.cpu) & 0x10 == 0 and emu.read(0xE67, emu.memType.cpu) == 0 then
+		start_pressed = false
+	end
+	if start_pressed and emu.read(0xE67, emu.memType.cpu) > 0 then
 		start_reached = true
 	end
 	if not start_reached then
@@ -421,6 +428,11 @@ function display_time()
 				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 			else
 				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+			end
+			
+			if emu.getState().ppu.frameCount < (end_frame - 1) then
+				end_frame = -1
+				end_reached = false
 			end
 		end
 	end
