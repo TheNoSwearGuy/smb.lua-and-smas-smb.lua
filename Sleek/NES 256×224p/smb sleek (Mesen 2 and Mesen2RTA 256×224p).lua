@@ -512,6 +512,11 @@ function display_time()
 			else
 				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
 			end
+			
+			if emu.getState().frameCount < (end_frame - 1) then
+				end_frame = -1
+				end_reached = false
+			end
 		end
 	end
 	
