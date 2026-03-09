@@ -517,6 +517,11 @@ function display_time()
 			else
 				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
 			end
+			
+			if emu.getState().frameCount < (end_frame - 1) then
+				end_frame = -1
+				end_reached = false
+			end
 		end
 	end
 	
@@ -526,9 +531,9 @@ function display_time()
 	milliseconds = math.floor((frames * 1000) % 1000)
 	
 	if emu.getState().frameCount - start_frame < 0 then --draw it
-		drawString(188, 232, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
+		drawString(188, 224, string.format("-%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
 	else
-		drawString(193, 232, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
+		drawString(193, 224, string.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds), text_colour, text_back_colour)
 	end
 end
 
@@ -537,7 +542,7 @@ function round(n)
 end
 
 function display_information()
-	local y_counter = 1
+	local y_counter = 9
 	
 	if toggle_display_21_framerule then
 		if emu.read(ram_IntervalTimerControl, emu.memType.nesMemory) < 10 then --Done to make the display look nice
