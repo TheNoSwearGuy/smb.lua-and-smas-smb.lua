@@ -1,7 +1,7 @@
 # Changelog
 ## 2026-03-09
 - Fixed the timer on the Mesen, MesenRTA, Mesen-S, MesenRTA-S, Mesen 2, and Mesen2RTA scripts so when an end frame has been set, rewinding past it resets it
-- Fixed a bug in the All-Stars scripts so pressing Start during the fade in between game select and the title screen doesn't start the timer
+- Fixed a bug in the Mesen-S, MesenRTA-S, Mesen 2 (All-Stars), and Mesen2RTA (All-Stars) scripts so pressing Start during the fade in between game select and the title screen doesn't start the timer
 - Fixes
 
 ## 2026-02-26
