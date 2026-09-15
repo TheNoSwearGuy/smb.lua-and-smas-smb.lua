@@ -379,7 +379,7 @@ function display_spriteslots()
 end
 
 function display_time()
-	if region == "PAL" then --If playing a PAL game
+	if region == "PAL" then --If playing on PAL
 		snes_framerate_numerator = 322445
 		snes_framerate_denominator = 6448
 	else
@@ -387,7 +387,7 @@ function display_time()
 		snes_framerate_denominator = 655171
 	end
 	
-	if end_frame < 0 then --If there is no end frame, update the timer forever
+	if end_frame < 0 then --If there is no end frame, run the timer forever
 		frames = round(snes_framerate_denominator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 	else --Otherwise, stop the timer when end frame has been reached
 		if emu.framecount() <= end_frame then
