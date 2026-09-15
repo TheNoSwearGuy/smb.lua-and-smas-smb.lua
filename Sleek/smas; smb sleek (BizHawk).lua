@@ -1,8 +1,9 @@
---Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "BP?" ("Backwards Pole?") feature isn't entirely accurate, but it's like 95% accurate
+--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
+--Note: the "BP?" ("Backwards Pole?") feature for SMAS: SMB1 isn't entirely accurate, but it's like 95% accurate. For SMAS: SMB2J, it's 100% accurate.
 
---Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
---the right framerate. If you set this variable to a non-valid value, this will make the timer default to you not playing on PAL.
+--Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order
+--for the timer to use the right framerate and for the subpixel string to be accurate. If you set this variable
+--to a non-valid value, this will make the timer and the subpixel string default to you not playing on PAL.
 local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
 
 --toggle features, change to false if you don't want them
@@ -49,8 +50,10 @@ local wram_Player_X_Speed        = 0x5D
 local wram_SprObject_PageLoc     = 0x78
 local wram_Player_Y_Speed        = 0xA0
 local wram_FloateyNum_Timer      = 0x138
+local wram_PlayerFacingDir       = 0x202
 local wram_SprObject_X_Position  = 0x219
 local wram_SprObject_Y_Position  = 0x237
+local wram_BowserHitPoints       = 0x283
 local wram_BowserOrigXPos        = 0x366
 local wram_Player_Rel_XPos       = 0x3AD
 local wram_SprObject_X_MoveForce = 0x401
@@ -96,13 +99,21 @@ WZ_or_Title_Remainder = false
 
 function display_practice_information() --Code to display practice information
 	if memory.readbyte(wram_Player_X_Speed) < 0x19 or memory.readbyte(wram_Player_X_Speed) > 0xE7 then
-		y = 24
+		if region == "PAL" then
+			x = 28
+		else
+			x = 24
+		end
 	else
-		y = 40
+		if region == "PAL" then
+			x = 48
+		else
+			x = 40
+		end
 	end
 	local xstringvalue = (((memory.readbyte(wram_SprObject_PageLoc) << 12)
 		+ (memory.readbyte(wram_SprObject_X_Position) << 4)
-		+ (memory.readbyte(wram_SprObject_X_MoveForce) >> 4)) % y) >> 3
+		+ (memory.readbyte(wram_SprObject_X_MoveForce) >> 4)) % x) >> 3
 	local sockvalue = (memory.readbyte(wram_SprObject_X_Position) << 8)
 		+ memory.readbyte(wram_SprObject_X_MoveForce)
 		+ ((0xFF - memory.readbyte(wram_SprObject_Y_Position) >> 2) * 0x280)
@@ -146,8 +157,8 @@ function display_practice_information() --Code to display practice information
 		end
 	end
 	local EnemyFrame = false
-	for j = 0, 9, 1 do
-		if memory.readbyte(wram_FloateyNum_Timer + j) == 0x2A then
+	for i = 0, 9, 1 do
+		if memory.readbyte(wram_FloateyNum_Timer + i) == 0x2A then
 			EnemyFrame = true
 			break
 		end
@@ -164,9 +175,9 @@ function display_practice_information() --Code to display practice information
 			Frame = memory.readbyte(wram_FrameCounter)
 		end
 	elseif BowserFrame then
-		for k = 0, 8, 1 do
-			if memory.read_s8(wram_Enemy_Flag + k) > 0 and memory.readbyte(wram_Enemy_ID + k) == 0x2D
-			and memory.readbyte(wram_SprObject_X_Position + k + 1) ~= memory.readbyte(wram_BowserOrigXPos)
+		for i = 0, 8, 1 do
+			if memory.read_s8(wram_Enemy_Flag + i) > 0 and memory.readbyte(wram_Enemy_ID + i) == 0x2D
+			and memory.readbyte(wram_SprObject_X_Position + i + 1) ~= memory.readbyte(wram_BowserOrigXPos)
 			and memory.readbyte(wram_FrameCounter) & 3 == 0 then
 				if FrameDisplay == -1 then
 					FrameDisplay = memory.readbyte(wram_FrameCounter)
@@ -256,37 +267,41 @@ function display_practice_information() --Code to display practice information
 		RemainderDisplay2 = -1
 	end
 	
-	--Predefined left-edge positions for each world and level
-	local ScreenLeft = {
-		{0xE6, 0xE7, 0x05},
-		{0x10, 0xE7, 0x98},
-		{0x08, 0x96, 0xF7},
-		{0x98, 0xE7, 0xB6},
-		{0xF6, 0x08, 0x05},
-		{0x27, 0x07, 0xF6},
-		{0xB6, 0xE7, 0x98},
-		{0x07, 0x07, 0xE6}
-	}
-	
-	--Compute relative X position of player
-	local RelX = memory.readbyte(wram_Player_Rel_XPos)
-	local xpos = (RelX > 0x70) and (RelX - 0x70) or 0
-	
-	--Read current world and level
-	local world = memory.readbyte(wram_WorldNumber)
-	local level = memory.readbyte(wram_LevelNumber)
-	
-	--Check if we have a predefined screen left for this world and level
-	if ScreenLeft[world + 1] and ScreenLeft[world + 1][level + 1]
-	and not (memory.readbyte(wram_GameEngineSubroutine) == 4 or memory.readbyte(wram_GameEngineSubroutine) == 5) then
-		local LeftEdge = ScreenLeft[world + 1][level + 1]
-		local PowerupX = memory.readbyte(wram_SprObject_X_Position + 10)
+	if memory.readbyte(0x7FFF00) == 2 then --If playing SMAS: SMB1
+		--Predefined left-edge positions for each world and level
+		local ScreenLeft = {
+			{0xE6, 0xE7, 0x05},
+			{0x10, 0xE7, 0x98},
+			{0x08, 0x96, 0xF7},
+			{0x98, 0xE7, 0xB6},
+			{0xF6, 0x08, 0x05},
+			{0x27, 0x07, 0xF6},
+			{0xB6, 0xE7, 0x98},
+			{0x07, 0x07, 0xE6}
+		}
 		
-		--Compute 8-bit difference (wraps around 0–255 automatically)
-		local diff = (PowerupX - (LeftEdge - xpos)) % 0x100
+		--Compute relative X position of player
+		local RelX = memory.readbyte(wram_Player_Rel_XPos)
+		local xpos = (RelX > 0x70) and (RelX - 0x70) or 0
 		
-		--Backwards pole if difference >= 128 (0x80)
-		BackwardsPole = diff >= 0x80
+		--Read current world and level
+		local world = memory.readbyte(wram_WorldNumber)
+		local level = memory.readbyte(wram_LevelNumber)
+		
+		--Check if we have a predefined screen left for this world and level
+		if ScreenLeft[world + 1] and ScreenLeft[world + 1][level + 1]
+		and not (memory.readbyte(wram_GameEngineSubroutine) == 4 or memory.readbyte(wram_GameEngineSubroutine) == 5) then
+			local LeftEdge = ScreenLeft[world + 1][level + 1]
+			local PowerupX = memory.readbyte(wram_SprObject_X_Position + 10)
+			
+			--Compute 8-bit difference (wraps around 0–255 automatically)
+			local diff = (PowerupX - (LeftEdge - xpos)) % 0x100
+			
+			--Backwards pole if difference >= 128 (0x80)
+			BackwardsPole = diff >= 0x80
+		end
+	elseif memory.readbyte(0x7FFF00) == 4 then --If playing SMAS: SMB2J
+		BackwardsPole = memory.readbyte(wram_PlayerFacingDir) == 2
 	end
 	
 	--Display the result
@@ -373,12 +388,12 @@ function display_time()
 	end
 	
 	if end_frame < 0 then --If there is no end frame, update the timer forever
-		frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
-	else --If there is an end frame, stop updating the timer when end frame has been reached
+		frames = round(snes_framerate_denominator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+	else --Otherwise, stop the timer when end frame has been reached
 		if emu.framecount() <= end_frame then
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(snes_framerate_denominator * math.abs(emu.framecount() - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		else
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+			frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
 		end
 	end
 	
@@ -414,6 +429,20 @@ function display_information()
 		gui.pixelText(250, -1, string.format("%d", memory.readbyte(wram_IntervalTimerControl)), text_colour, "clear", "fceux")
 	else
 		gui.pixelText(244, -1, string.format("%d", memory.readbyte(wram_IntervalTimerControl)), text_colour, "clear", "fceux")
+	end
+	
+	local DisplayBowserHP = false
+	for i = 0, 4, 1 do
+		if memory.readbyte(wram_Enemy_ID + i) == 0x2D then
+			DisplayBowserHP = true
+			break
+		end
+	end
+	if DisplayBowserHP then --Only display Bowser HP when a Bowser has been loaded
+		gui.drawBox(235, 15, 255, 23, text_back_colour, text_back_colour)
+		gui.pixelText(235, 15, "HP", text_colour, "clear", "fceux")
+		gui.pixelText(246, 15, ":", text_colour, "clear", "fceux")
+		gui.pixelText(250, 15, string.format("%d", memory.readbyte(wram_BowserHitPoints)), text_colour, "clear", "fceux")
 	end
 	
 	--display mario information
@@ -507,25 +536,27 @@ function display_information()
 end
 
 while true do
-	if toggle_display_sprite_hitboxes then
-		display_sprite_hitboxes()
-	end
-	
-	if toggle_display_mario_hitbox then
-		display_mario_hitbox()
-	end
-	
-	if toggle_display_sprite_slot_above_sprite then
-		display_sprite_slot_above_sprite()
-	end
-	
-	if toggle_display_sprite_information then
-		display_spriteslots()
-	end
-	
-	if toggle_display_above_status_bar_information then
-		display_practice_information()
-		display_information()
+	if memory.readbyte(0x7FFF00) == 2 or memory.readbyte(0x7FFF00) == 4 then --If playing SMAS: SMB1 or SMAS: SMB2J
+		if toggle_display_sprite_hitboxes then
+			display_sprite_hitboxes()
+		end
+		
+		if toggle_display_mario_hitbox then
+			display_mario_hitbox()
+		end
+		
+		if toggle_display_sprite_slot_above_sprite then
+			display_sprite_slot_above_sprite()
+		end
+		
+		if toggle_display_sprite_information then
+			display_spriteslots()
+		end
+		
+		if toggle_display_above_status_bar_information then
+			display_practice_information()
+			display_information()
+		end
 	end
 	
 	if toggle_display_time then
