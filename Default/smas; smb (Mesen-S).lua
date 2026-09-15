@@ -1,8 +1,9 @@
-﻿--Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "Backwards Pole?" feature isn't entirely accurate, but it's like 95% accurate
+﻿--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
+--Note: the "Backwards Pole?" feature for SMAS: SMB1 isn't entirely accurate, but it's like 95% accurate. For SMAS: SMB2J, it's 100% accurate.
 
---Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the timer to use
---the right framerate. If you set this variable to a non-valid value, this will make the timer default to you not playing on PAL.
+--Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order
+--for the timer to use the right framerate and for the subpixel string to be accurate. If you set this variable
+--to a non-valid value, this will make the timer and the subpixel string default to you not playing on PAL.
 local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
 
 --toggle features, change to false if you don't want them
@@ -15,6 +16,7 @@ local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
 local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true
+local toggle_display_bowser_hp                      = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
 local toggle_display_mario_acceleration             = true
@@ -38,7 +40,7 @@ local timer_end = {
 	{0x75F, 7}
 }
 local timer_reset = {
-	{0x6C9, 2},
+	{0x7FFF00, 0}
 }
 
 --Kaname settings:
@@ -58,8 +60,10 @@ local wram_Player_X_Speed        = 0x5D
 local wram_SprObject_PageLoc     = 0x78
 local wram_Player_Y_Speed        = 0xA0
 local wram_FloateyNum_Timer      = 0x138
+local wram_PlayerFacingDir       = 0x202
 local wram_SprObject_X_Position  = 0x219
 local wram_SprObject_Y_Position  = 0x237
+local wram_BowserHitPoints       = 0x283
 local wram_BowserOrigXPos        = 0x366
 local wram_Player_Rel_XPos       = 0x3AD
 local wram_SprObject_X_MoveForce = 0x401
@@ -117,13 +121,21 @@ end
 
 function display_practice_information() --Code to display practice information
 	if emu.read(wram_Player_X_Speed, emu.memType.cpu) < 0x19 or emu.read(wram_Player_X_Speed, emu.memType.cpu) > 0xE7 then
-		y = 24
+		if region == "PAL" then
+			x = 28
+		else
+			x = 24
+		end
 	else
-		y = 40
+		if region == "PAL" then
+			x = 48
+		else
+			x = 40
+		end
 	end
 	local xstringvalue = (((emu.read(wram_SprObject_PageLoc, emu.memType.cpu) << 12)
 		+ (emu.read(wram_SprObject_X_Position, emu.memType.cpu) << 4)
-		+ (emu.read(wram_SprObject_X_MoveForce, emu.memType.cpu) >> 4)) % y) >> 3
+		+ (emu.read(wram_SprObject_X_MoveForce, emu.memType.cpu) >> 4)) % x) >> 3
 	local sockvalue = (emu.read(wram_SprObject_X_Position, emu.memType.cpu) << 8)
 		+ emu.read(wram_SprObject_X_MoveForce, emu.memType.cpu)
 		+ ((0xFF - emu.read(wram_SprObject_Y_Position, emu.memType.cpu) >> 2) * 0x280)
@@ -163,8 +175,8 @@ function display_practice_information() --Code to display practice information
 		end
 	end
 	local EnemyFrame = false
-	for j = 0, 9, 1 do
-		if emu.read(wram_FloateyNum_Timer + j, emu.memType.cpu) == 0x2A then
+	for i = 0, 9, 1 do
+		if emu.read(wram_FloateyNum_Timer + i, emu.memType.cpu) == 0x2A then
 			EnemyFrame = true
 			break
 		end
@@ -181,9 +193,9 @@ function display_practice_information() --Code to display practice information
 			Frame = emu.read(wram_FrameCounter, emu.memType.cpu)
 		end
 	elseif BowserFrame then
-		for k = 0, 8, 1 do
-			if emu.read(wram_Enemy_Flag + k, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + k, emu.memType.cpu) == 0x2D
-			and emu.read(wram_SprObject_X_Position + k + 1, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
+		for i = 0, 8, 1 do
+			if emu.read(wram_Enemy_Flag + i, emu.memType.cpu, 1) > 0 and emu.read(wram_Enemy_ID + i, emu.memType.cpu) == 0x2D
+			and emu.read(wram_SprObject_X_Position + i + 1, emu.memType.cpu) ~= emu.read(wram_BowserOrigXPos, emu.memType.cpu)
 			and emu.read(wram_FrameCounter, emu.memType.cpu) & 3 == 0 then
 				if FrameDisplay == -1 then
 					FrameDisplay = emu.read(wram_FrameCounter, emu.memType.cpu)
@@ -260,37 +272,41 @@ function display_practice_information() --Code to display practice information
 		RemainderDisplay2 = -1
 	end
 	
-	--Predefined left-edge positions for each world and level
-	local ScreenLeft = {
-		{0xE6, 0xE7, 0x05},
-		{0x10, 0xE7, 0x98},
-		{0x08, 0x96, 0xF7},
-		{0x98, 0xE7, 0xB6},
-		{0xF6, 0x08, 0x05},
-		{0x27, 0x07, 0xF6},
-		{0xB6, 0xE7, 0x98},
-		{0x07, 0x07, 0xE6}
-	}
-	
-	--Compute relative X position of player
-	local RelX = emu.read(wram_Player_Rel_XPos, emu.memType.cpu)
-	local xpos = (RelX > 0x70) and (RelX - 0x70) or 0
-	
-	--Read current world and level
-	local world = emu.read(wram_WorldNumber, emu.memType.cpu)
-	local level = emu.read(wram_LevelNumber, emu.memType.cpu)
-	
-	--Check if we have a predefined screen left for this world and level
-	if ScreenLeft[world + 1] and ScreenLeft[world + 1][level + 1]
-	and not (emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 4 or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 5) then
-		local LeftEdge = ScreenLeft[world + 1][level + 1]
-		local PowerupX = emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu)
+	if emu.read(0x7FFF00, emu.memType.cpu) == 2 then --If playing SMAS: SMB1
+		--Predefined left-edge positions for each world and level
+		local ScreenLeft = {
+			{0xE6, 0xE7, 0x05},
+			{0x10, 0xE7, 0x98},
+			{0x08, 0x96, 0xF7},
+			{0x98, 0xE7, 0xB6},
+			{0xF6, 0x08, 0x05},
+			{0x27, 0x07, 0xF6},
+			{0xB6, 0xE7, 0x98},
+			{0x07, 0x07, 0xE6}
+		}
 		
-		--Compute 8-bit difference (wraps around 0–255 automatically)
-		local diff = (PowerupX - (LeftEdge - xpos)) % 0x100
+		--Compute relative X position of player
+		local RelX = emu.read(wram_Player_Rel_XPos, emu.memType.cpu)
+		local xpos = (RelX > 0x70) and (RelX - 0x70) or 0
 		
-		--Backwards pole if difference >= 128 (0x80)
-		BackwardsPole = diff >= 0x80
+		--Read current world and level
+		local world = emu.read(wram_WorldNumber, emu.memType.cpu)
+		local level = emu.read(wram_LevelNumber, emu.memType.cpu)
+		
+		--Check if we have a predefined screen left for this world and level
+		if ScreenLeft[world + 1] and ScreenLeft[world + 1][level + 1]
+		and not (emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 4 or emu.read(wram_GameEngineSubroutine, emu.memType.cpu) == 5) then
+			local LeftEdge = ScreenLeft[world + 1][level + 1]
+			local PowerupX = emu.read(wram_SprObject_X_Position + 10, emu.memType.cpu)
+			
+			--Compute 8-bit difference (wraps around 0–255 automatically)
+			local diff = (PowerupX - (LeftEdge - xpos)) % 0x100
+			
+			--Backwards pole if difference >= 128 (0x80)
+			BackwardsPole = diff >= 0x80
+		end
+	elseif emu.read(0x7FFF00, emu.memType.cpu) == 4 then --If playing SMAS: SMB2J
+		BackwardsPole = emu.read(wram_PlayerFacingDir, emu.memType.cpu) == 2
 	end
 	
 	--Display the result
@@ -430,12 +446,12 @@ function display_time()
 		frames = 0
 	else
 		if end_frame < 0 then --If end frame has not been reached, keep running the timer
-			frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		else --Otherwise, stop the timer
 			if emu.getState().ppu.frameCount <= end_frame then
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
 			else
-				frames = round(1 / (snes_framerate_numerator / snes_framerate_denominator) * snes_framerate_numerator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+				frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
 			end
 			
 			if emu.getState().ppu.frameCount < (end_frame - 1) then
@@ -469,6 +485,20 @@ function display_information()
 			drawString(173, y_counter, string.format("21 Framerule:  %d", emu.read(wram_IntervalTimerControl, emu.memType.cpu)), text_colour, text_back_colour)
 		else
 			drawString(173, y_counter, string.format("21 Framerule: %d", emu.read(wram_IntervalTimerControl, emu.memType.cpu)), text_colour, text_back_colour)
+		end
+		y_counter = y_counter + 8
+	end
+	
+	if toggle_display_bowser_hp then
+		local DisplayBowserHP = false
+		for i = 0, 4, 1 do
+			if emu.read(wram_Enemy_ID + i, emu.memType.cpu) == 0x2D then
+				DisplayBowserHP = true
+				break
+			end
+		end
+		if DisplayBowserHP then --Only display Bowser HP when a Bowser has been loaded
+			drawString(191, y_counter, string.format("Bowser HP: %d", emu.read(wram_BowserHitPoints, emu.memType.cpu)), text_colour, text_back_colour)
 		end
 	end
 	
@@ -512,30 +542,34 @@ function display_information()
 end
 
 function calculations()
-	if toggle_display_practice_information then
-		display_practice_information()
-	end
-	
-	if toggle_display_sprite_hitboxes then
-		display_sprite_hitboxes()
-	end
-	
-	if toggle_display_mario_hitbox then
-		display_mario_hitbox()
-	end
-	
-	if toggle_display_sprite_slot_above_sprite then
-		display_sprite_slot_above_sprite()
-	end
-	
-	if toggle_display_sprite_information then
-		display_spriteslots()
+	if emu.read(0x7FFF00, emu.memType.cpu) == 2 or emu.read(0x7FFF00, emu.memType.cpu) == 4 then --If playing SMAS: SMB1 or SMAS: SMB2J
+		if toggle_display_practice_information then
+			display_practice_information()
+		end
+		
+		if toggle_display_sprite_hitboxes then
+			display_sprite_hitboxes()
+		end
+		
+		if toggle_display_mario_hitbox then
+			display_mario_hitbox()
+		end
+		
+		if toggle_display_sprite_slot_above_sprite then
+			display_sprite_slot_above_sprite()
+		end
+		
+		if toggle_display_sprite_information then
+			display_spriteslots()
+		end
 	end
 	
 	if toggle_display_time then
 		display_time()
 	end
-	display_information()
+	if emu.read(0x7FFF00, emu.memType.cpu) == 2 or emu.read(0x7FFF00, emu.memType.cpu) == 4 then --If playing SMAS: SMB1 or SMAS: SMB2J
+		display_information()
+	end
 end
 
 emu.addEventCallback(calculations, emu.eventType.endFrame)

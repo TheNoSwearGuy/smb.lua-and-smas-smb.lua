@@ -1,15 +1,15 @@
---Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with
---the X subpixel string, and thank you to @slither for helping me with the framerule counter
+--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the
+--X subpixel string, and thank you to @silverslither for helping me with the framerule counter
 --Note: unless you're using Kaname for SMB1 (NTSC or PAL), SMB2J, or ANNSMB, the framerule counter only works with the following routes:
 --• Start → Small → End
 --• Start → Small → Mushroom → End
 --• Start → Small → Mushroom → Fire → End
 --The framerule counter desyncs when you soft reset or hard reset at least 32,767 non-lag frames after loading the ROM file
 
---Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the framerule counter to be accurate and for
---the timer to use the right framerate. Kaname for SMB1 (NTSC and PAL), SMB2J, and ANNSMB is automatically detected and is prioritized over the regular games, so
---if you're using that, it doesn't matter what you have this variable set to. If you set this variable to a non-valid value, this will make the framerule counter
---and the timer default to you not playing on PAL.
+--Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the framerule counter to be accurate, for the
+--timer to use the right framerate, and for the subpixel string to be accurate. Kaname for SMB1 (NTSC and PAL), SMB2J, and ANNSMB is automatically detected and is
+--prioritized over the regular games, so if you're using that, it doesn't matter what you have this variable set to. If you set this variable to a non-valid value,
+--this will make the framerule counter, the timer, and the subpixel string default to you not playing on PAL.
 local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
 
 --toggle features, change to false if you don't want them
@@ -22,6 +22,7 @@ local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
 local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true
+local toggle_display_bowser_hp                      = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
 local toggle_display_mario_acceleration             = true
@@ -68,6 +69,7 @@ local ram_BowserOrigXPos        = 0x366
 local ram_SprObject_X_MoveForce = 0x400
 local ram_SprObject_YMF_Dummy   = 0x416
 local ram_Player_Y_MoveForce    = 0x433
+local ram_BowserHitPoints       = 0x483
 local ram_BoundingBox_UL_Corner = 0x4AC
 local ram_WarpZoneControl       = 0x6D6
 local ram_FrictionAdderLow      = 0x702
@@ -109,68 +111,75 @@ Rule                  = 0
 ScreenEnterDisplay    = 0
 WZ_or_Title_Remainder = false
 
-function display_practice_information() --Code to display practice information
-	if memory.readbyte(0xFEFD) == 0xEA and memory.readbyte(0xFEFE) == 0xEA --Check if we're playing on Kaname
-	and memory.readbyte(0xFEFF) == 0xEA and memory.readbyte(0xFF0B) == 0x4C
-	and memory.readbyte(0xFF0D) == 0x84 and memory.readbyte(0xFF0E) == 0x4C
-	and memory.readbyte(0xFF10) == 0x80 then
-		Kaname_practice = true
+function detect_kaname()
+	if memory.readbyte(0xFF21) == 0x4C and memory.readbyte(0xFF23) == 0x84
+	and memory.readbyte(0xFF24) == 0x4C and memory.readbyte(0xFF26) == 0x80 --Detect Kaname 3.9
+	or memory.readbyte(0xFF0B) == 0x4C and memory.readbyte(0xFF0D) == 0x84
+	and memory.readbyte(0xFF0E) == 0x4C and memory.readbyte(0xFF10) == 0x80 then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+		if memory.readbyte(0xFF22) == 0xE4 and memory.readbyte(0xFF25) == 0x64
+		or memory.readbyte(0xFF22) == 0xC8 and memory.readbyte(0xFF25) == 0xAE --Detect Kaname 3.9
+		or memory.readbyte(0xFF0C) == 0xE1 and memory.readbyte(0xFF0F) == 0x61
+		or memory.readbyte(0xFF0C) == 0xC5 and memory.readbyte(0xFF0F) == 0xAB then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+			Kaname = "NTSC"
+		elseif memory.readbyte(0xFF22) == 0xE4 and memory.readbyte(0xFF25) == 0x72 --Detect Kaname 3.9
+		or memory.readbyte(0xFF0C) == 0xE1 and memory.readbyte(0xFF0F) == 0x6F then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+			Kaname = "PAL"
+		else
+			Kaname = false
+		end
 	else
-		Kaname_practice = false
+		Kaname = false
 	end
-	
-	if Kaname_practice then
+end
+
+function display_practice_information() --Code to display practice information
+	if not Kaname then
+		local RNG = memory.readbyte(ram_PseudoRandomBitReg) * 256 + memory.readbyte(ram_PseudoRandomBitReg + 1)
+		local framecount_minus_lagcount = RNGmap[RNG]
+		while true do
+			framecount_minus_lagcount = framecount_minus_lagcount + 32767
+			if framecount_minus_lagcount > (emu.framecount() - emu.lagcount()) then
+				framecount_minus_lagcount = framecount_minus_lagcount - 32767
+				break
+			end
+		end
+		
+		if region == "PAL" then --If playing on PAL
+			x = 18
+		else
+			x = 21
+		end
+		
+		if memory.readbyte(ram_PlayerStatus) == 0 then
+			framerule = math.floor((framecount_minus_lagcount - 1) / x + 1) % 10000
+		elseif memory.readbyte(ram_PlayerStatus) == 1 then
+			framerule = math.floor((framecount_minus_lagcount - 60) / x + 1) % 10000
+		else
+			framerule = math.floor((framecount_minus_lagcount - 123) / x + 1) % 10000
+		end
+	else
 		framerule = memory.readbyte(ram_CurrentRule) * 1000
 			+ memory.readbyte(ram_CurrentRule + 1) * 100
 			+ memory.readbyte(ram_CurrentRule + 2) * 10
 			+ memory.readbyte(ram_CurrentRule + 3)
-	else
-		local RNG = memory.readbyte(ram_PseudoRandomBitReg) * 256 + memory.readbyte(ram_PseudoRandomBitReg + 1)
-		local framecount_minus_lagcount = RNGmap[RNG]
-		while framecount_minus_lagcount < (emu.framecount() - emu.lagcount()) do
-			if framecount_minus_lagcount < (emu.framecount() - emu.lagcount()) then
-				framecount_minus_lagcount = framecount_minus_lagcount + 32767
-			end
-		end
-		if framecount_minus_lagcount > (emu.framecount() - emu.lagcount()) then
-			framecount_minus_lagcount = framecount_minus_lagcount - 32767
-		end
-		if region == "PAL" then
-			if memory.readbyte(ram_PlayerStatus) == 0 then
-				framerule = math.floor((framecount_minus_lagcount - 1) / 18 + 1) % 10000
-			elseif memory.readbyte(ram_PlayerStatus) == 1 then
-				framerule = math.floor((framecount_minus_lagcount - 60) / 18 + 1) % 10000
-			else
-				framerule = math.floor((framecount_minus_lagcount - 123) / 18 + 1) % 10000
-			end
-		else
-			if memory.readbyte(0xE141) == 0x38 and memory.readbyte(0xE142) == 0x44
-			and memory.readbyte(0xE143) == 0xBA and memory.readbyte(0xE144) == 0xAA
-			and memory.readbyte(0xE145) == 0xB2 and memory.readbyte(0xE146) == 0xAA
-			and memory.readbyte(0xE147) == 0x44 and memory.readbyte(0xE148) == 0x38 then --If playing an FDS game
-				x = 2
-			else
-				x = 1
-			end
-			
-			if memory.readbyte(ram_PlayerStatus) == 0 then
-				framerule = math.floor((framecount_minus_lagcount - x) / 21 + 1) % 10000
-			elseif memory.readbyte(ram_PlayerStatus) == 1 then
-				framerule = math.floor((framecount_minus_lagcount - x - 59) / 21 + 1) % 10000
-			else
-				framerule = math.floor((framecount_minus_lagcount - x - 122) / 21 + 1) % 10000
-			end
-		end
 	end
 	
 	if memory.readbyte(ram_Player_X_Speed) < 0x19 or memory.readbyte(ram_Player_X_Speed) > 0xE7 then
-		y = 24
+		if region == "PAL" or Kaname == "PAL" then
+			x = 28
+		else
+			x = 24
+		end
 	else
-		y = 40
+		if region == "PAL" or Kaname == "PAL" then
+			x = 48
+		else
+			x = 40
+		end
 	end
 	local xstringvalue = (((memory.readbyte(ram_SprObject_PageLoc) << 12)
 		+ (memory.readbyte(ram_SprObject_X_Position) << 4)
-		+ (memory.readbyte(ram_SprObject_X_MoveForce) >> 4)) % y) >> 3
+		+ (memory.readbyte(ram_SprObject_X_MoveForce) >> 4)) % x) >> 3
 	local sockvalue = (memory.readbyte(ram_SprObject_X_Position) << 8)
 		+ memory.readbyte(ram_SprObject_X_MoveForce)
 		+ ((0xFF - memory.readbyte(ram_SprObject_Y_Position) >> 2) * 0x280)
@@ -200,8 +209,8 @@ function display_practice_information() --Code to display practice information
 		end
 	end
 	local EnemyFrame = false
-	for j = 0, 5, 1 do
-		if memory.readbyte(ram_FloateyNum_Timer + j) == 0x2A then
+	for i = 0, 5, 1 do
+		if memory.readbyte(ram_FloateyNum_Timer + i) == 0x2A then
 			EnemyFrame = true
 			break
 		end
@@ -224,9 +233,9 @@ function display_practice_information() --Code to display practice information
 			Frame = memory.readbyte(ram_FrameCounter)
 		end
 	elseif BowserFrame then
-		for k = 0, 4, 1 do
-			if memory.read_s8(ram_Enemy_Flag + k) > 0 and memory.readbyte(ram_Enemy_ID + k) == 0x2D
-			and memory.readbyte(ram_SprObject_X_Position + k + 1) ~= memory.readbyte(ram_BowserOrigXPos)
+		for i = 0, 4, 1 do
+			if memory.read_s8(ram_Enemy_Flag + i) > 0 and memory.readbyte(ram_Enemy_ID + i) == 0x2D
+			and memory.readbyte(ram_SprObject_X_Position + i + 1) ~= memory.readbyte(ram_BowserOrigXPos)
 			and memory.readbyte(ram_FrameCounter) & 3 == 0 then
 				if FrameDisplay == -1 then
 					FrameDisplay = memory.readbyte(ram_FrameCounter)
@@ -391,36 +400,7 @@ function display_spriteslots()
 end
 
 function display_time()
-	if memory.readbyte(0xFEFD) == 0xEA and memory.readbyte(0xFEFE) == 0xEA --Check if we're playing on Kaname
-	and memory.readbyte(0xFEFF) == 0xEA and memory.readbyte(0xFF0B) == 0x4C
-	and memory.readbyte(0xFF0D) == 0x84 and memory.readbyte(0xFF0E) == 0x4C
-	and memory.readbyte(0xFF10) == 0x80 and memory.readbyte(0xFF1F) == 0x20 then
-		if memory.readbyte(0xFF0C) == 0x9F and memory.readbyte(0xFF0F) == 0x57
-		and memory.readbyte(0xFF20) == 0xEE and memory.readbyte(0xFF21) == 0xBB
-		or memory.readbyte(0xFF0C) == 0x87 and memory.readbyte(0xFF0F) == 0xA1
-		and memory.readbyte(0xFF20) == 0x2E and memory.readbyte(0xFF21) == 0xAC
-		or memory.readbyte(0xFF0C) == 0x87 and memory.readbyte(0xFF0F) == 0xA1
-		and memory.readbyte(0xFF20) == 0x4E and memory.readbyte(0xFF21) == 0xB0 then
-			Kaname_time = "NTSC"
-		elseif memory.readbyte(0xFF0C) == 0xA4 and memory.readbyte(0xFF0F) == 0x65
-		and memory.readbyte(0xFF20) == 0xEE and memory.readbyte(0xFF21) == 0xBB then
-			Kaname_time = "PAL"
-		else
-			Kaname_time = false
-		end
-	else
-		Kaname_time = false
-	end
-	
-	if not Kaname_time then
-		if region == "PAL" then --If playing on PAL
-			nes_framerate_numerator = 322445
-			nes_framerate_denominator = 6448
-		else
-			nes_framerate_numerator = 39375000
-			nes_framerate_denominator = 655171
-		end
-	elseif Kaname_time == "PAL" then
+	if not Kaname and region == "PAL" or Kaname == "PAL" then --If playing on PAL
 		nes_framerate_numerator = 322445
 		nes_framerate_denominator = 6448
 	else
@@ -429,12 +409,12 @@ function display_time()
 	end
 	
 	if end_frame < 0 then --If there is no end frame, run the timer forever
-		frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+		frames = round(nes_framerate_denominator * math.abs(emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 	else --Otherwise, stop the timer when end frame has been reached
 		if emu.framecount() <= end_frame then
-			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * math.abs(emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(nes_framerate_denominator * math.abs(emu.framecount() - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		else
-			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
+			frames = round(nes_framerate_denominator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
 		end
 	end
 	
@@ -470,6 +450,20 @@ function display_information()
 			gui.pixelText(159, y_counter, string.format("21 Framerule:  %d", memory.readbyte(ram_IntervalTimerControl)), text_colour, text_back_colour, "fceux")
 		else
 			gui.pixelText(159, y_counter, string.format("21 Framerule: %d", memory.readbyte(ram_IntervalTimerControl)), text_colour, text_back_colour, "fceux")
+		end
+		y_counter = y_counter + 8
+	end
+	
+	if toggle_display_bowser_hp then
+		local DisplayBowserHP = false
+		for i = 0, 4, 1 do
+			if memory.readbyte(ram_Enemy_ID + i) == 0x2D then
+				DisplayBowserHP = true
+				break
+			end
+		end
+		if DisplayBowserHP then --Only display Bowser HP when a Bowser has been loaded
+			gui.pixelText(183, y_counter, string.format("Bowser HP: %d", memory.readbyte(ram_BowserHitPoints)), text_colour, text_back_colour, "fceux")
 		end
 	end
 	
@@ -513,6 +507,10 @@ function display_information()
 end
 
 while true do
+	if toggle_display_practice_information or toggle_display_time then
+		detect_kaname()
+	end
+	
 	if toggle_display_practice_information then
 		display_practice_information()
 	end

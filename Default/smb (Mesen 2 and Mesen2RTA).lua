@@ -1,15 +1,15 @@
---Thank you to @Simplistic for helping me fix the Frame counter display and for helping me with
---the X subpixel string, and thank you to @slither for helping me with the framerule counter
+--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the
+--X subpixel string, and thank you to @silverslither for helping me with the framerule counter
 --Note: unless you're using Kaname for SMB1 (NTSC or PAL), SMB2J, or ANNSMB, the framerule counter only works with the following routes:
 --• Start → Small → End
 --• Start → Small → Mushroom → End
 --• Start → Small → Mushroom → Fire → End
 --The framerule counter desyncs after 32,767 lag frames
 
---Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the framerule counter to be accurate and for
---the timer to use the right framerate. Kaname for SMB1 (NTSC and PAL), SMB2J, and ANNSMB is automatically detected and is prioritized over the regular games, so
---if you're using that, it doesn't matter what you have this variable set to. If you set this variable to a non-valid value, this will make the framerule counter
---and the timer default to you not playing on PAL.
+--Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the framerule counter to be accurate, for the
+--timer to use the right framerate, and for the subpixel string to be accurate. Kaname for SMB1 (NTSC and PAL), SMB2J, and ANNSMB is automatically detected and is
+--prioritized over the regular games, so if you're using that, it doesn't matter what you have this variable set to. If you set this variable to a non-valid value,
+--this will make the framerule counter, the timer, and the subpixel string default to you not playing on PAL.
 local region = "NTSC" --Valid inputs: '"NTSC"' and '"PAL"'
 
 --toggle features, change to false if you don't want them
@@ -22,6 +22,7 @@ local toggle_display_sprite_information             = true
 local toggle_display_sprite_information_after_death = false
 local toggle_display_time                           = true
 local toggle_display_21_framerule                   = true
+local toggle_display_bowser_hp                      = true
 local toggle_display_mario_position                 = true
 local toggle_display_mario_velocity                 = true
 local toggle_display_mario_acceleration             = true
@@ -81,6 +82,7 @@ local ram_BowserOrigXPos        = 0x366
 local ram_SprObject_X_MoveForce = 0x400
 local ram_SprObject_YMF_Dummy   = 0x416
 local ram_Player_Y_MoveForce    = 0x433
+local ram_BowserHitPoints       = 0x483
 local ram_BoundingBox_UL_Corner = 0x4AC
 local ram_WarpZoneControl       = 0x6D6
 local ram_FrictionAdderLow      = 0x702
@@ -133,68 +135,75 @@ function drawString(x, y, text, text_colour, text_back_colour)
 	emu.drawString(x, y, text, text_colour, text_back_colour)
 end
 
-function display_practice_information() --Code to display practice information
-	if emu.read(0xFEFD, emu.memType.nesMemory) == 0xEA and emu.read(0xFEFE, emu.memType.nesMemory) == 0xEA --Check if we're playing on Kaname
-	and emu.read(0xFEFF, emu.memType.nesMemory) == 0xEA and emu.read(0xFF0B, emu.memType.nesMemory) == 0x4C
-	and emu.read(0xFF0D, emu.memType.nesMemory) == 0x84 and emu.read(0xFF0E, emu.memType.nesMemory) == 0x4C
-	and emu.read(0xFF10, emu.memType.nesMemory) == 0x80 then
-		Kaname_practice = true
+function detect_kaname()
+	if emu.read(0xFF21, emu.memType.nesMemory) == 0x4C and emu.read(0xFF23, emu.memType.nesMemory) == 0x84
+	and emu.read(0xFF24, emu.memType.nesMemory) == 0x4C and emu.read(0xFF26, emu.memType.nesMemory) == 0x80 --Detect Kaname 3.9
+	or emu.read(0xFF0B, emu.memType.nesMemory) == 0x4C and emu.read(0xFF0D, emu.memType.nesMemory) == 0x84
+	and emu.read(0xFF0E, emu.memType.nesMemory) == 0x4C and emu.read(0xFF10, emu.memType.nesMemory) == 0x80 then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+		if emu.read(0xFF22, emu.memType.nesMemory) == 0xE4 and emu.read(0xFF25, emu.memType.nesMemory) == 0x64
+		or emu.read(0xFF22, emu.memType.nesMemory) == 0xC8 and emu.read(0xFF25, emu.memType.nesMemory) == 0xAE --Detect Kaname 3.9
+		or emu.read(0xFF0C, emu.memType.nesMemory) == 0xE1 and emu.read(0xFF0F, emu.memType.nesMemory) == 0x61
+		or emu.read(0xFF0C, emu.memType.nesMemory) == 0xC5 and emu.read(0xFF0F, emu.memType.nesMemory) == 0xAB then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+			Kaname = "NTSC"
+		elseif emu.read(0xFF22, emu.memType.nesMemory) == 0xE4 and emu.read(0xFF25, emu.memType.nesMemory) == 0x72 --Detect Kaname 3.9
+		or emu.read(0xFF0C, emu.memType.nesMemory) == 0xE1 and emu.read(0xFF0F, emu.memType.nesMemory) == 0x6F then --Detect Kaname 3.8/Kaname 3.7/Kaname 3.6
+			Kaname = "PAL"
+		else
+			Kaname = false
+		end
 	else
-		Kaname_practice = false
+		Kaname = false
 	end
-	
-	if Kaname_practice then
+end
+
+function display_practice_information() --Code to display practice information
+	if not Kaname then
+		local RNG = emu.read(ram_PseudoRandomBitReg, emu.memType.nesMemory) * 256 + emu.read(ram_PseudoRandomBitReg + 1, emu.memType.nesMemory)
+		local framecount_minus_lagcount = RNGmap[RNG]
+		while true do
+			framecount_minus_lagcount = framecount_minus_lagcount + 32767
+			if framecount_minus_lagcount > (emu.getState().frameCount) then
+				framecount_minus_lagcount = framecount_minus_lagcount - 32767
+				break
+			end
+		end
+		
+		if region == "PAL" then --If playing on PAL
+			x = 18
+		else
+			x = 21
+		end
+		
+		if emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 0 then
+			framerule = math.floor((framecount_minus_lagcount - 1) / x + 1) % 10000
+		elseif emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 1 then
+			framerule = math.floor((framecount_minus_lagcount - 60) / x + 1) % 10000
+		else
+			framerule = math.floor((framecount_minus_lagcount - 123) / x + 1) % 10000
+		end
+	else
 		framerule = emu.read(ram_CurrentRule, emu.memType.nesMemory) * 1000
 			+ emu.read(ram_CurrentRule + 1, emu.memType.nesMemory) * 100
 			+ emu.read(ram_CurrentRule + 2, emu.memType.nesMemory) * 10
 			+ emu.read(ram_CurrentRule + 3, emu.memType.nesMemory)
-	else
-		local RNG = emu.read(ram_PseudoRandomBitReg, emu.memType.nesMemory) * 256 + emu.read(ram_PseudoRandomBitReg + 1, emu.memType.nesMemory)
-		local framecount_minus_lagcount = RNGmap[RNG]
-		while framecount_minus_lagcount < (emu.getState().frameCount) do
-			if framecount_minus_lagcount < (emu.getState().frameCount) then
-				framecount_minus_lagcount = framecount_minus_lagcount + 32767
-			end
-		end
-		if framecount_minus_lagcount > (emu.getState().frameCount) then
-			framecount_minus_lagcount = framecount_minus_lagcount - 32767
-		end
-		if region == "PAL" then
-			if emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 0 then
-				framerule = math.floor((framecount_minus_lagcount - 1) / 18 + 1) % 10000
-			elseif emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 1 then
-				framerule = math.floor((framecount_minus_lagcount - 60) / 18 + 1) % 10000
-			else
-				framerule = math.floor((framecount_minus_lagcount - 123) / 18 + 1) % 10000
-			end
-		else
-			if emu.read(0xE141, emu.memType.nesMemory) == 0x38 and emu.read(0xE142, emu.memType.nesMemory) == 0x44
-			and emu.read(0xE143, emu.memType.nesMemory) == 0xBA and emu.read(0xE144, emu.memType.nesMemory) == 0xAA
-			and emu.read(0xE145, emu.memType.nesMemory) == 0xB2 and emu.read(0xE146, emu.memType.nesMemory) == 0xAA
-			and emu.read(0xE147, emu.memType.nesMemory) == 0x44 and emu.read(0xE148, emu.memType.nesMemory) == 0x38 then --If playing an FDS game
-				x = 2
-			else
-				x = 1
-			end
-			
-			if emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 0 then
-				framerule = math.floor((framecount_minus_lagcount - x) / 21 + 1) % 10000
-			elseif emu.read(ram_PlayerStatus, emu.memType.nesMemory) == 1 then
-				framerule = math.floor((framecount_minus_lagcount - x - 59) / 21 + 1) % 10000
-			else
-				framerule = math.floor((framecount_minus_lagcount - x - 122) / 21 + 1) % 10000
-			end
-		end
 	end
 	
 	if emu.read(ram_Player_X_Speed, emu.memType.nesMemory) < 0x19 or emu.read(ram_Player_X_Speed, emu.memType.nesMemory) > 0xE7 then
-		y = 24
+		if region == "PAL" or Kaname == "PAL" then
+			x = 28
+		else
+			x = 24
+		end
 	else
-		y = 40
+		if region == "PAL" or Kaname == "PAL" then
+			x = 48
+		else
+			x = 40
+		end
 	end
 	local xstringvalue = (((emu.read(ram_SprObject_PageLoc, emu.memType.nesMemory) << 12)
 		+ (emu.read(ram_SprObject_X_Position, emu.memType.nesMemory) << 4)
-		+ (emu.read(ram_SprObject_X_MoveForce, emu.memType.nesMemory) >> 4)) % y) >> 3
+		+ (emu.read(ram_SprObject_X_MoveForce, emu.memType.nesMemory) >> 4)) % x) >> 3
 	local sockvalue = (emu.read(ram_SprObject_X_Position, emu.memType.nesMemory) << 8)
 		+ emu.read(ram_SprObject_X_MoveForce, emu.memType.nesMemory)
 		+ ((0xFF - emu.read(ram_SprObject_Y_Position, emu.memType.nesMemory) >> 2) * 0x280)
@@ -225,8 +234,8 @@ function display_practice_information() --Code to display practice information
 		end
 	end
 	local EnemyFrame = false
-	for j = 0, 5, 1 do
-		if emu.read(ram_FloateyNum_Timer + j, emu.memType.nesMemory) == 0x2A then
+	for i = 0, 5, 1 do
+		if emu.read(ram_FloateyNum_Timer + i, emu.memType.nesMemory) == 0x2A then
 			EnemyFrame = true
 			break
 		end
@@ -249,9 +258,9 @@ function display_practice_information() --Code to display practice information
 			Frame = emu.read(ram_FrameCounter, emu.memType.nesMemory)
 		end
 	elseif BowserFrame then
-		for k = 0, 4, 1 do
-			if emu.read(ram_Enemy_Flag + k, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + k, emu.memType.nesMemory) == 0x2D
-			and emu.read(ram_SprObject_X_Position + k + 1, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
+		for i = 0, 4, 1 do
+			if emu.read(ram_Enemy_Flag + i, emu.memType.nesMemory, 1) > 0 and emu.read(ram_Enemy_ID + i, emu.memType.nesMemory) == 0x2D
+			and emu.read(ram_SprObject_X_Position + i + 1, emu.memType.nesMemory) ~= emu.read(ram_BowserOrigXPos, emu.memType.nesMemory)
 			and emu.read(ram_FrameCounter, emu.memType.nesMemory) & 3 == 0 then
 				if FrameDisplay == -1 then
 					FrameDisplay = emu.read(ram_FrameCounter, emu.memType.nesMemory)
@@ -419,36 +428,7 @@ function display_spriteslots()
 end
 
 function display_time()
-	if emu.read(0xFEFD, emu.memType.nesMemory) == 0xEA and emu.read(0xFEFE, emu.memType.nesMemory) == 0xEA --Check if we're playing on Kaname
-	and emu.read(0xFEFF, emu.memType.nesMemory) == 0xEA and emu.read(0xFF0B, emu.memType.nesMemory) == 0x4C
-	and emu.read(0xFF0D, emu.memType.nesMemory) == 0x84 and emu.read(0xFF0E, emu.memType.nesMemory) == 0x4C
-	and emu.read(0xFF10, emu.memType.nesMemory) == 0x80 and emu.read(0xFF1F, emu.memType.nesMemory) == 0x20 then
-		if emu.read(0xFF0C, emu.memType.nesMemory) == 0x9F and emu.read(0xFF0F, emu.memType.nesMemory) == 0x57
-		and emu.read(0xFF20, emu.memType.nesMemory) == 0xEE and emu.read(0xFF21, emu.memType.nesMemory) == 0xBB
-		or emu.read(0xFF0C, emu.memType.nesMemory) == 0x87 and emu.read(0xFF0F, emu.memType.nesMemory) == 0xA1
-		and emu.read(0xFF20, emu.memType.nesMemory) == 0x2E and emu.read(0xFF21, emu.memType.nesMemory) == 0xAC
-		or emu.read(0xFF0C, emu.memType.nesMemory) == 0x87 and emu.read(0xFF0F, emu.memType.nesMemory) == 0xA1
-		and emu.read(0xFF20, emu.memType.nesMemory) == 0x4E and emu.read(0xFF21, emu.memType.nesMemory) == 0xB0 then
-			Kaname_time = "NTSC"
-		elseif emu.read(0xFF0C, emu.memType.nesMemory) == 0xA4 and emu.read(0xFF0F, emu.memType.nesMemory) == 0x65
-		and emu.read(0xFF20, emu.memType.nesMemory) == 0xEE and emu.read(0xFF21, emu.memType.nesMemory) == 0xBB then
-			Kaname_time = "PAL"
-		else
-			Kaname_time = false
-		end
-	else
-		Kaname_time = false
-	end
-	
-	if not Kaname_time then
-		if region == "PAL" then --If playing on PAL
-			nes_framerate_numerator = 322445
-			nes_framerate_denominator = 6448
-		else
-			nes_framerate_numerator = 39375000
-			nes_framerate_denominator = 655171
-		end
-	elseif Kaname_time == "PAL" then
+	if not Kaname and region == "PAL" or Kaname == "PAL" then --If playing on PAL
 		nes_framerate_numerator = 322445
 		nes_framerate_denominator = 6448
 	else
@@ -510,12 +490,12 @@ function display_time()
 		frames = 0
 	else
 		if end_frame < 0 then --If end frame has not been reached, keep running the timer
-			frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 		else --Otherwise, stop the timer
 			if emu.getState().frameCount <= end_frame then
-				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
 			else
-				frames = round(1 / (nes_framerate_numerator / nes_framerate_denominator) * nes_framerate_numerator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
+				frames = round(nes_framerate_denominator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
 			end
 			
 			if emu.getState().frameCount < (end_frame - 1) then
@@ -549,6 +529,20 @@ function display_information()
 			drawString(173, y_counter, string.format("21 Framerule:  %d", emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)), text_colour, text_back_colour)
 		else
 			drawString(173, y_counter, string.format("21 Framerule: %d", emu.read(ram_IntervalTimerControl, emu.memType.nesMemory)), text_colour, text_back_colour)
+		end
+		y_counter = y_counter + 8
+	end
+	
+	if toggle_display_bowser_hp then
+		local DisplayBowserHP = false
+		for i = 0, 4, 1 do
+			if emu.read(ram_Enemy_ID + i, emu.memType.nesMemory) == 0x2D then
+				DisplayBowserHP = true
+				break
+			end
+		end
+		if DisplayBowserHP then --Only display Bowser HP when a Bowser has been loaded
+			drawString(191, y_counter, string.format("Bowser HP: %d", emu.read(ram_BowserHitPoints, emu.memType.nesMemory)), text_colour, text_back_colour)
 		end
 	end
 	
@@ -592,6 +586,10 @@ function display_information()
 end
 
 function calculations()
+	if toggle_display_practice_information or toggle_display_time then
+		detect_kaname()
+	end
+	
 	if toggle_display_practice_information then
 		display_practice_information()
 	end
