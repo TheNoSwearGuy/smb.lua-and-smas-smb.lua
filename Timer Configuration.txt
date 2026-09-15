@@ -31,7 +31,7 @@ local timer_reset = {}
 
 
 
-Any%, Warpless, and Minus World Ending (any delay):
+Any% and Warpless (any delay):
 local timer_delay = 1
 local timer_start = {
 	{0xE, 8},
