@@ -389,7 +389,7 @@ function display_spriteslots()
 end
 
 function display_time()
-	if region == "PAL" then --If playing a PAL game
+	if region == "PAL" then --If playing on PAL
 		snes_framerate_numerator = 322445
 		snes_framerate_denominator = 6448
 	else
