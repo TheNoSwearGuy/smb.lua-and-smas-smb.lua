@@ -118,5 +118,5 @@ local timer_end = {
 	{0x75F, 7}
 }
 local timer_reset = {
-	{0x7FFF00, 0},
+	{0x7FFF00, 0}
 }
