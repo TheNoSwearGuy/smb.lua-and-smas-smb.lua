@@ -1,5 +1,5 @@
 ﻿--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "Backwards Pole?" feature for SMAS: SMB1 isn't entirely accurate, but it's like 95% accurate. For SMAS: SMB2J, it's 100% accurate.
+--Note: the "Backwards Pole?" feature for SMAS: SMB1 isn't 100% accurate, but it's 98% accurate. For SMAS: SMB2J, it's 100% accurate.
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order
 --for the timer to use the right framerate and for the subpixel string to be accurate. If you set this variable
@@ -446,12 +446,12 @@ function display_time()
 		frames = 0
 	else
 		if end_frame < 0 then --If end frame has not been reached, keep running the timer
-			frames = round(snes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(snes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in run
 		else --Otherwise, stop the timer
 			if emu.getState().frameCount <= end_frame then
-				frames = round(snes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(snes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in run
 			else
-				frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+				frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in run
 			end
 			
 			if emu.getState().frameCount < (end_frame - 1) then
