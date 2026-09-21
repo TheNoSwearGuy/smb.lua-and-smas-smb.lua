@@ -1,5 +1,5 @@
 ﻿--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "Backwards Pole?" feature for SMAS: SMB1 isn't entirely accurate, but it's like 95% accurate. For SMAS: SMB2J, it's 100% accurate.
+--Note: the "Backwards Pole?" feature for SMAS: SMB1 isn't 100% accurate, but it's 98% accurate. For SMAS: SMB2J, it's 100% accurate.
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order for the subpixel string
 --to be accurate. If you set this variable to a non-valid value, this will make the subpixel string default to you not playing on PAL.
