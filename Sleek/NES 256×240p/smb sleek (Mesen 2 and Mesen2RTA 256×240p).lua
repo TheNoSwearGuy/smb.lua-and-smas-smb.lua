@@ -484,12 +484,12 @@ function display_time()
 		frames = 0
 	else
 		if end_frame < 0 then --If end frame has not been reached, keep running the timer
-			frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in run
 		else --Otherwise, stop the timer
 			if emu.getState().frameCount <= end_frame then
-				frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(nes_framerate_denominator * math.abs(emu.getState().frameCount - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --current frames in run
 			else
-				frames = round(nes_framerate_denominator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in movie
+				frames = round(nes_framerate_denominator * (end_frame - start_frame) / (nes_framerate_numerator / 1000)) / 1000 --end frame in run
 			end
 			
 			if emu.getState().frameCount < (end_frame - 1) then
