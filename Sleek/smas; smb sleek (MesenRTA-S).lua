@@ -1,5 +1,5 @@
 ﻿--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "BP?" ("Backwards Pole?") feature for SMAS: SMB1 isn't entirely accurate, but it's like 95% accurate. For SMAS: SMB2J, it's 100% accurate.
+--Note: the "BP?" ("Backwards Pole?") feature for SMAS: SMB1 isn't 100% accurate, but it's 98% accurate. For SMAS: SMB2J, it's 100% accurate.
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order
 --for the timer to use the right framerate and for the subpixel string to be accurate. If you set this variable
@@ -21,7 +21,7 @@ local text_colour             = 0xFFFFFF
 local text_faded_colour       = 0x7FFFFFFF
 local text_back_colour        = 0x99000000
 local text_faded_back_colour  = 0xCC000000
-local hitbox_edge_colour_on   = 0x00FF00 --Hitbox back and edge colour for when collisions are being checked
+local hitbox_edge_colour_on   = 0x00FF00 --Hitbox back and edge colour for when collisions are being checked (always used when not showing hitbox collision check)
 local hitbox_back_colour_on   = 0x7F00FF00
 local hitbox_edge_colour_off  = 0x00FF00 --Hitbox back and edge colour for when collisions are not being checked
 local hitbox_back_colour_off  = 0xFF000000
@@ -437,12 +437,12 @@ function display_time()
 		frames = 0
 	else
 		if end_frame < 0 then --If end frame has not been reached, keep running the timer
-			frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+			frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in run
 		else --Otherwise, stop the timer
 			if emu.getState().ppu.frameCount <= end_frame then
-				frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in movie
+				frames = round(snes_framerate_denominator * math.abs(emu.getState().ppu.frameCount - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --current frames in run
 			else
-				frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in movie
+				frames = round(snes_framerate_denominator * (end_frame - start_frame) / (snes_framerate_numerator / 1000)) / 1000 --end frame in run
 			end
 			
 			if emu.getState().ppu.frameCount < (end_frame - 1) then
