@@ -1,5 +1,5 @@
 ﻿--Thank you to @simplistic6502 for helping me fix the Frame counter display and for helping me with the X subpixel string
---Note: the "BP?" ("Backwards Pole?") feature for SMAS: SMB1 isn't 100% accurate, but it's 98% accurate. For SMAS: SMB2J, it's 100% accurate.
+--Note: the "BP?" ("Backwards Pole?") feature for SMAS: SMB1 isn't 100% accurate, but it's 98.8% accurate. For SMAS: SMB2J, it's 100% accurate.
 
 --Before running the script, you MUST set this variable to the region you're playing on — NTSC or PAL — in order
 --for the timer to use the right framerate and for the subpixel string to be accurate. If you set this variable
